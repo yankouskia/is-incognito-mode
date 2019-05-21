@@ -1,8 +1,8 @@
-[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/yankouskia/is-incognito/pulls) [![GitHub license](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/yankouskia/is-incognito/blob/master/LICENSE)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/yankouskia/is-incognito-mode/pulls) [![GitHub license](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/yankouskia/is-incognito-mode/blob/master/LICENSE)
 
-[![NPM](https://nodei.co/npm/is-incognito.png?downloads=true)](https://www.npmjs.com/package/is-incognito)
+[![NPM](https://nodei.co/npm/is-incognito-mode.png?downloads=true)](https://www.npmjs.com/package/is-incognito-mode)
 
-# is-incognito
+# is-incognito-mode
 
 👤Function to identify whether browser is in incognito mode 👀
 
@@ -12,18 +12,18 @@ To install library:
 
 ```sh
 # yarn
-yarn add is-incognito
+yarn add is-incognito-mode
 
 # npm
-npm install is-incognito --save
+npm install is-incognito-mode --save
 ```
 
 ```js
 // ES6 modules
-import isIncognito from 'is-incognito';
+import isIncognito from 'is-incognito-mode';
 
 // CommonJS modules
-const isIncognito = require('is-incognito').default;
+const isIncognito = require('is-incognito-mode').default;
 
 /*
   Function returns Promise, which could be:
@@ -47,7 +47,7 @@ isIncognito()
 
 ## Demo
 
-[DEMO can be found here](https://yankouskia.github.io/is-incognito/example/index.html)
+[DEMO can be found here](https://yankouskia.github.io/is-incognito-mode/example/index.html)
 
 
 Incognito Window            |  Regular Window
@@ -67,9 +67,9 @@ Result `Promise` is
 
 ## Contributing
 
-`is-incognito` is open-source library, opened for contributions
+`is-incognito-mode` is open-source library, opened for contributions
 
 
 ### License
 
-`is-incognito` is [MIT licensed](https://github.com/yankouskia/is-incognito/blob/master/LICENSE)
+`is-incognito-mode` is [MIT licensed](https://github.com/yankouskia/is-incognito-mode/blob/master/LICENSE)
