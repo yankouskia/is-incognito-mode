@@ -1,9 +1,9 @@
 {
-  "name": "is-incognito",
+  "name": "is-incognito-mode",
   "version": "1.0.0",
   "description": "Function to identify whether user is in incognito mode",
-  "main": "./dist/incognito.js",
-  "repository": "git@github.com:yankouskia/is-incognito.git",
+  "main": "./dist/isIncognito.js",
+  "repository": "git@github.com:yankouskia/is-incognito-mode.git",
   "author": "yankouskia <aleksandr.yankovskiy@gmail.com>",
   "license": "MIT",
   "devDependencies": {

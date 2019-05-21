@@ -3,10 +3,10 @@ const path = require('path');
 module.exports = {
   mode: process.env.NODE_ENV === 'production' ? 'production' : 'development',
   entry: {
-    incognito: './index.js',
+    isIncognito: './index.js',
   },
   output: {
-    library: 'incognito',
+    library: 'isIncognito',
     libraryTarget: 'umd',
     filename: '[name].js',
     path: __dirname + '/dist',
