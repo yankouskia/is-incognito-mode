@@ -1,0 +1,22 @@
+{
+  "name": "is-incognito",
+  "version": "1.0.0",
+  "description": "Function to identify whether user is in incognito mode",
+  "main": "./dist/incognito.js",
+  "repository": "git@github.com:yankouskia/is-incognito.git",
+  "author": "yankouskia <aleksandr.yankovskiy@gmail.com>",
+  "license": "MIT",
+  "devDependencies": {
+    "@babel/core": "^7.4.4",
+    "@babel/preset-env": "^7.4.4",
+    "babel-loader": "^8.0.6",
+    "webpack": "^4.32.0",
+    "webpack-cli": "^3.3.2"
+  },
+  "dependencies": {
+    "get-browser": "^1.0.0"
+  },
+  "scripts": {
+    "build": "NODE_ENV=production webpack -p"
+  }
+}
