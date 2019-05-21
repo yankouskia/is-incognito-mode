@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en" style="height: 100%;">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <title>Is incognito</title>
+</head>
+<script src="../dist/incognito.js"></script>
+<body style="height: 100%; display: flex; align-items: center; justify-content: center;">
+  <div id="text" style="font-size: 40px; font-weight: 600; text-align: center;"></div>
+</body>
+<script>
+  const element = document.querySelector('#text');
+  window.incognito.default()
+    .then(isPrivate => {
+      if (isPrivate) {
+        element.innerHTML = 'There is no porn!<br /><br /><br />Why are you using Incognito mode?';
+        element.style.color = 'red';
+      } else {
+        element.textContent = 'Incognito mode is NOT activated';
+      }
+    })
+    .catch(e => {
+      element.textContent = 'I am really unable to identify incognito mode!<br /><br /> Sorry for that ...';
+    })
+</script>
+</html>
