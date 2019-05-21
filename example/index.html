@@ -18,11 +18,11 @@
         element.innerHTML = 'There is no porn!<br /><br /><br />Why are you using Incognito mode?';
         element.style.color = 'red';
       } else {
-        element.textContent = 'Incognito mode is NOT activated';
+        element.innerHTML = 'Incognito mode is NOT activated';
       }
     })
     .catch(e => {
-      element.textContent = 'I am really unable to identify incognito mode!<br /><br /> Sorry for that ...';
+      element.innerHTML = 'I am really unable to identify incognito mode!<br /><br /> Sorry for that ...';
     })
 </script>
 </html>
