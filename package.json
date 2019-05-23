@@ -1,6 +1,6 @@
 {
   "name": "is-incognito-mode",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Function to identify whether user is in incognito mode",
   "main": "./dist/isIncognito.js",
   "repository": "git@github.com:yankouskia/is-incognito-mode.git",
@@ -14,7 +14,7 @@
     "webpack-cli": "^3.3.2"
   },
   "dependencies": {
-    "get-browser": "^1.0.0"
+    "get-browser": "^1.0.2"
   },
   "scripts": {
     "build": "NODE_ENV=production webpack -p"
