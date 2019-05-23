@@ -1748,10 +1748,10 @@ gauge@~2.7.3:
     strip-ansi "^3.0.1"
     wide-align "^1.1.0"
 
-get-browser@^1.0.0:
-  version "1.0.0"
-  resolved "https://registry.yarnpkg.com/get-browser/-/get-browser-1.0.0.tgz#c683de07d815bc0e26cb577d6020d56e570a8779"
-  integrity sha512-ngq2AO1ZoSco0FKlbouQpBmEG5OQZbCoYgabkTUfzoSzNxuMr5h8mbUlkdVrwBdfcAygmKaRRKrbB54Bhb8EZw==
+get-browser@^1.0.2:
+  version "1.0.2"
+  resolved "https://registry.yarnpkg.com/get-browser/-/get-browser-1.0.2.tgz#a31a076c72b6350633dad5c5d8271204ca70d862"
+  integrity sha512-ShejpqX4l2s+qwkgThn2b8PSaHK/q3hXKaRRcxmfRnz8VgOk/EOeTjToAHRFC6veQKKpu7VoHpiiSnb+kNcA1w==
 
 get-caller-file@^1.0.1:
   version "1.0.3"
