@@ -1,6 +1,6 @@
 {
   "name": "is-incognito-mode",
-  "version": "1.0.1",
+  "version": "1.1.0",
   "description": "Function to identify whether user is in incognito mode",
   "main": "./dist/isIncognito.js",
   "repository": "git@github.com:yankouskia/is-incognito-mode.git",
