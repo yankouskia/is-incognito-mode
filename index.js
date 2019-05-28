@@ -24,6 +24,8 @@ export default function isIncognito() {
 
       db.onerror = yes;
       db.onsuccess = no;
+
+      return;
     }
 
     if (browser === browsers.IE || browser === browsers.EDGE) {
