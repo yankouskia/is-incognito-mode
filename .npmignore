@@ -1,4 +1,8 @@
 .editorconfig
+.travis.yml
+.eslint*
+*.config.js
+index.test-d.ts
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*

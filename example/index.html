@@ -6,13 +6,13 @@
   <meta http-equiv="X-UA-Compatible" content="ie=edge">
   <title>Is incognito</title>
 </head>
-<script src="../dist/isIncognito.js"></script>
+<script src="../dist/isIncognito.umd.min.js"></script>
 <body style="height: 100%; display: flex; align-items: center; justify-content: center;">
   <div id="text" style="font-size: 40px; font-weight: 600; text-align: center;"></div>
 </body>
 <script>
   const element = document.querySelector('#text');
-  window.isIncognito.default()
+  window.isIncognito()
     .then(isPrivate => {
       if (isPrivate) {
         element.innerHTML = 'There is no porn!<br /><br /><br />Why are you using Incognito mode?';

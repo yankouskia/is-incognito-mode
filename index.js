@@ -1,4 +1,5 @@
-import { browsers, detect } from 'get-browser';
+import getBrowser from 'get-browser';
+const { browsers, detect } = getBrowser;
 
 const UNUSUAL_KEY = 'cd1394e6-3fd1-4a2d-ae60-c9ae01f7ee89';
 const CANNOT_IDENTIFY_ERROR = new Error('Cannot identify whether incognito mode is active');
@@ -45,11 +46,11 @@ export default function isIncognito() {
         window.openDatabase(null, null, null, null);
       } catch (e) {
         return yes();
-      };
+      }
 
       return no();
     }
 
     return unknown();
   });
-};
+}

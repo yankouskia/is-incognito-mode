@@ -23,7 +23,7 @@ npm install is-incognito-mode --save
 import isIncognito from 'is-incognito-mode';
 
 // CommonJS modules
-const isIncognito = require('is-incognito-mode').default;
+const isIncognito = require('is-incognito-mode');
 
 /*
   Function returns Promise, which could be:

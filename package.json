@@ -3,20 +3,45 @@
   "version": "1.1.0",
   "description": "Function to identify whether user is in incognito mode",
   "main": "./dist/isIncognito.js",
+  "module": "./dist/isIncognito.esm.js",
   "repository": "git@github.com:yankouskia/is-incognito-mode.git",
+  "types": "index.d.ts",
   "author": "yankouskia <aleksandr.yankovskiy@gmail.com>",
   "license": "MIT",
   "devDependencies": {
-    "@babel/core": "^7.4.4",
-    "@babel/preset-env": "^7.4.4",
+    "@babel/core": "^7.4.5",
+    "@babel/preset-env": "^7.4.5",
     "babel-loader": "^8.0.6",
-    "webpack": "^4.32.0",
-    "webpack-cli": "^3.3.2"
+    "del-cli": "^2.0.0",
+    "eslint": "^6.0.0",
+    "eslint-config-semistandard": "^13.0.0",
+    "eslint-config-standard": "^12.0.0",
+    "eslint-plugin-import": "^2.17.3",
+    "eslint-plugin-node": "^9.1.0",
+    "eslint-plugin-promise": "^4.1.1",
+    "eslint-plugin-standard": "^4.0.0",
+    "rollup": "^1.16.3",
+    "rollup-plugin-babel": "^4.3.3",
+    "rollup-plugin-commonjs": "^10.0.1",
+    "rollup-plugin-node-resolve": "^5.2.0",
+    "rollup-plugin-terser": "^5.0.0",
+    "tsd": "^0.7.3",
+    "webpack": "^4.35.0",
+    "webpack-cli": "^3.3.5"
   },
   "dependencies": {
     "get-browser": "^1.0.2"
   },
   "scripts": {
-    "build": "NODE_ENV=production webpack -p"
+    "lint": "eslint .",
+    "prebuild": "del-cli dist",
+    "build": "rollup -c rollup.config.js",
+    "test": "tsd",
+    "prepublishOnly": "yarn run build"
+  },
+  "tsd": {
+    "compilerOptions": {
+      "esModuleInterop": true
+    }
   }
 }
