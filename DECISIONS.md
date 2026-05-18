@@ -57,7 +57,9 @@ Concrete heuristic: quotas below **~ 120 MB** OR below ~ 0.5 % of `navigator.dev
 
 **Decision.** ESLint v9 flat config with `typescript-eslint` v8, plus Prettier.
 
-**Alternatives.** Biome is faster and replaces both tools in one binary. We chose ESLint because: (1) `typescript-eslint` rules like `no-floating-promises` and `no-misused-promises` are critical for an async library and Biome doesn't fully match them yet; (2) the ESLint plugin ecosystem (`eslint-plugin-unicorn`, `eslint-plugin-import-x`, `eslint-plugin-promise`) covers things Biome doesn't.
+**Alternatives.** Biome is faster and replaces both tools in one binary. We chose ESLint because: (1) `typescript-eslint` rules like `no-floating-promises` and `no-misused-promises` are critical for an async library and Biome doesn't fully match them yet; (2) the ESLint plugin ecosystem (`eslint-plugin-unicorn`, `eslint-plugin-promise`, `eslint-plugin-n`) covers things Biome doesn't.
+
+**Note.** `eslint-plugin-import-x` was evaluated but dropped — the v4 typescript-resolver integration has known compatibility issues with `.ts`-extension imports under `verbatimModuleSyntax`, and TypeScript already validates imports natively, so the duplication wasn't worth the friction.
 
 **Consequences.** Slightly slower lint than Biome would be, but for a ~ 200-line codebase that's irrelevant.
 

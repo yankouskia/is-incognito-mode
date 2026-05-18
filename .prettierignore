@@ -1,0 +1,8 @@
+node_modules
+dist
+coverage
+docs-site
+pnpm-lock.yaml
+*.log
+.changeset/*.md
+CHANGELOG.md

@@ -14,28 +14,28 @@ isIncognito(): Promise<boolean>      // rejects if the environment cannot be pro
 
 ## Current state snapshot (pre-work)
 
-| Aspect                | Value                                                         |
-| --------------------- | ------------------------------------------------------------- |
-| Source language       | ES6 JavaScript (one file, `index.js`, 55 lines)               |
-| TypeScript            | none                                                          |
-| Module format shipped | UMD bundle via Webpack 4 + Babel 7 (`dist/isIncognito.js`)    |
-| `"type"` field        | absent (CJS by default)                                       |
-| `exports` map         | absent                                                        |
-| `engines.node`        | unspecified                                                   |
-| Runtime deps          | 1 — `get-browser@^1.0.2` (unmaintained, author's own package) |
-| Dev deps              | 5 — `@babel/core`, `@babel/preset-env`, `babel-loader`, `webpack@4`, `webpack-cli@3` |
-| Tests                 | **none**                                                      |
-| Coverage              | 0 %                                                           |
-| Linter                | none                                                          |
-| Formatter             | none (just `.editorconfig`)                                   |
-| CI                    | **none** — no `.github/workflows/`                            |
-| Release automation    | none                                                          |
-| Docs site             | none (one `example/index.html` referenced from README)        |
-| README                | exists, brief, contains a placeholder joke                    |
-| `LICENSE`             | MIT                                                           |
-| Audit                 | last visible Dependabot bumps in 2020                         |
-| Node tested against   | unknown                                                       |
-| Browser detection     | via `get-browser` (UA-sniff, returns enum)                    |
+| Aspect                           | Value                                                                                                                                                   |
+| -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Source language                  | ES6 JavaScript (one file, `index.js`, 55 lines)                                                                                                         |
+| TypeScript                       | none                                                                                                                                                    |
+| Module format shipped            | UMD bundle via Webpack 4 + Babel 7 (`dist/isIncognito.js`)                                                                                              |
+| `"type"` field                   | absent (CJS by default)                                                                                                                                 |
+| `exports` map                    | absent                                                                                                                                                  |
+| `engines.node`                   | unspecified                                                                                                                                             |
+| Runtime deps                     | 1 — `get-browser@^1.0.2` (unmaintained, author's own package)                                                                                           |
+| Dev deps                         | 5 — `@babel/core`, `@babel/preset-env`, `babel-loader`, `webpack@4`, `webpack-cli@3`                                                                    |
+| Tests                            | **none**                                                                                                                                                |
+| Coverage                         | 0 %                                                                                                                                                     |
+| Linter                           | none                                                                                                                                                    |
+| Formatter                        | none (just `.editorconfig`)                                                                                                                             |
+| CI                               | **none** — no `.github/workflows/`                                                                                                                      |
+| Release automation               | none                                                                                                                                                    |
+| Docs site                        | none (one `example/index.html` referenced from README)                                                                                                  |
+| README                           | exists, brief, contains a placeholder joke                                                                                                              |
+| `LICENSE`                        | MIT                                                                                                                                                     |
+| Audit                            | last visible Dependabot bumps in 2020                                                                                                                   |
+| Node tested against              | unknown                                                                                                                                                 |
+| Browser detection                | via `get-browser` (UA-sniff, returns enum)                                                                                                              |
 | Detection vectors used by source | FileSystem API (Chrome/Opera), IndexedDB error (Firefox), `PointerEvent` heuristic (IE/Edge legacy), `localStorage` exception + `openDatabase` (Safari) |
 
 ### Baseline tests
@@ -49,7 +49,7 @@ There is no test suite. Baseline coverage is **0 %**.
    - Firefox: IndexedDB now works in Private Browsing (Firefox 115+ stable since 2023).
    - Safari: `localStorage` writes succeed in Private mode since Safari 11; `openDatabase` was removed in Safari 18.
    - IE/legacy Edge: both products are EOL.
-   The package as currently published will return _wrong_ answers (often `false` / "not incognito") in 2026 browsers.
+     The package as currently published will return _wrong_ answers (often `false` / "not incognito") in 2026 browsers.
 
 2. **The runtime dependency `get-browser` is unmaintained** and itself does UA sniffing — fragile. Removing it is desirable.
 
@@ -86,13 +86,13 @@ There is no test suite. Baseline coverage is **0 %**.
 
 ## Risk register
 
-| Risk | Likelihood | Impact | Mitigation |
-| ---- | ---------- | ------ | ---------- |
-| Detection logic produces false positives in some browsers | High | High | Use a well-known threshold (≈ 120 MB) cross-validated against published research; expose the raw quota in `detectIncognito()` so consumers can tune. Add explicit `confidence` field. |
-| Public API change breaks v1 consumers | Medium | Medium | Keep the default export `() => Promise<boolean>` byte-compatible. Document the new named exports as additive. Major bump anyway because the build output, exports map, and runtime behaviour change. |
-| Tests can't run in a real browser in CI | Medium | Low | Mock `navigator` / `window` shape under `happy-dom`. The detection is small and pure enough to unit-test with mocked globals. Add a runnable example consumers can open in a real browser. |
-| Bundle size regression | Low | Low | `size-limit` budget enforced in CI. |
-| Secrets in git history | Low | High | Pre-flight `gitleaks` scan. If anything found, surface it — do not rewrite history. |
+| Risk                                                      | Likelihood | Impact | Mitigation                                                                                                                                                                                           |
+| --------------------------------------------------------- | ---------- | ------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Detection logic produces false positives in some browsers | High       | High   | Use a well-known threshold (≈ 120 MB) cross-validated against published research; expose the raw quota in `detectIncognito()` so consumers can tune. Add explicit `confidence` field.                |
+| Public API change breaks v1 consumers                     | Medium     | Medium | Keep the default export `() => Promise<boolean>` byte-compatible. Document the new named exports as additive. Major bump anyway because the build output, exports map, and runtime behaviour change. |
+| Tests can't run in a real browser in CI                   | Medium     | Low    | Mock `navigator` / `window` shape under `happy-dom`. The detection is small and pure enough to unit-test with mocked globals. Add a runnable example consumers can open in a real browser.           |
+| Bundle size regression                                    | Low        | Low    | `size-limit` budget enforced in CI.                                                                                                                                                                  |
+| Secrets in git history                                    | Low        | High   | Pre-flight `gitleaks` scan. If anything found, surface it — do not rewrite history.                                                                                                                  |
 
 ## Non-goals
 

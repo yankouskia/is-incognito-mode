@@ -26,6 +26,8 @@
     "declarationMap": true,
     "sourceMap": true,
     "removeComments": false,
+    "allowImportingTsExtensions": true,
+    "rewriteRelativeImportExtensions": true,
 
     "noEmit": true,
     "rootDir": ".",
