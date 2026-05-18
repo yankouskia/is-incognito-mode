@@ -1,22 +1,142 @@
 {
   "name": "is-incognito-mode",
-  "version": "1.1.0",
-  "description": "Function to identify whether user is in incognito mode",
-  "main": "./dist/isIncognito.js",
-  "repository": "git@github.com:yankouskia/is-incognito-mode.git",
-  "author": "yankouskia <aleksandr.yankovskiy@gmail.com>",
+  "version": "2.0.0",
+  "description": "Reliably detect whether the user's browser is in private / incognito mode. Zero dependencies, dual ESM + CJS, fully typed.",
+  "keywords": [
+    "incognito",
+    "private",
+    "private-mode",
+    "private-browsing",
+    "detect",
+    "detection",
+    "browser",
+    "chrome",
+    "firefox",
+    "safari",
+    "edge",
+    "navigator",
+    "storage",
+    "quota",
+    "typescript"
+  ],
+  "homepage": "https://yankouskia.github.io/is-incognito-mode/",
+  "bugs": {
+    "url": "https://github.com/yankouskia/is-incognito-mode/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/yankouskia/is-incognito-mode.git"
+  },
   "license": "MIT",
-  "devDependencies": {
-    "@babel/core": "^7.4.4",
-    "@babel/preset-env": "^7.4.4",
-    "babel-loader": "^8.0.6",
-    "webpack": "^4.32.0",
-    "webpack-cli": "^3.3.2"
+  "author": {
+    "name": "Aliaksandr Yankouski",
+    "email": "alex.yankouski@gmail.com",
+    "url": "https://github.com/yankouskia"
   },
-  "dependencies": {
-    "get-browser": "^1.0.2"
+  "funding": "https://github.com/sponsors/yankouskia",
+  "type": "module",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/index.cjs"
+      }
+    },
+    "./package.json": "./package.json"
   },
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "sideEffects": false,
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE",
+    "CHANGELOG.md"
+  ],
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "packageManager": "pnpm@9.15.0",
   "scripts": {
-    "build": "NODE_ENV=production webpack -p"
+    "build": "tsup",
+    "clean": "rimraf dist coverage docs-site",
+    "dev": "tsup --watch",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "test:bench": "vitest bench --run",
+    "docs": "typedoc",
+    "validate:package": "publint && attw --pack .",
+    "size": "size-limit",
+    "prepublishOnly": "pnpm run clean && pnpm run typecheck && pnpm run lint && pnpm run test && pnpm run build && pnpm run validate:package",
+    "release": "changeset publish",
+    "prepare": "simple-git-hooks || true"
+  },
+  "devDependencies": {
+    "@arethetypeswrong/cli": "^0.17.4",
+    "@changesets/cli": "^2.27.11",
+    "@eslint/js": "^9.18.0",
+    "@size-limit/preset-small-lib": "^11.1.6",
+    "@types/node": "^22.10.5",
+    "@vitest/coverage-v8": "^2.1.8",
+    "eslint": "^9.18.0",
+    "eslint-config-prettier": "^9.1.0",
+    "eslint-plugin-import-x": "^4.6.1",
+    "eslint-plugin-n": "^17.15.1",
+    "eslint-plugin-promise": "^7.2.1",
+    "eslint-plugin-unicorn": "^56.0.1",
+    "expect-type": "^1.1.0",
+    "happy-dom": "^16.3.0",
+    "lint-staged": "^15.3.0",
+    "prettier": "^3.4.2",
+    "publint": "^0.3.2",
+    "rimraf": "^6.0.1",
+    "simple-git-hooks": "^2.11.1",
+    "size-limit": "^11.1.6",
+    "tinybench": "^3.0.6",
+    "tsup": "^8.3.5",
+    "typedoc": "^0.28.0",
+    "typedoc-material-theme": "^1.4.0",
+    "typescript": "^5.7.3",
+    "typescript-eslint": "^8.20.0",
+    "vitest": "^2.1.8"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
+  "size-limit": [
+    {
+      "name": "ESM",
+      "path": "dist/index.js",
+      "limit": "2 kB"
+    },
+    {
+      "name": "CJS",
+      "path": "dist/index.cjs",
+      "limit": "2 kB"
+    }
+  ],
+  "simple-git-hooks": {
+    "pre-commit": "pnpm exec lint-staged"
+  },
+  "lint-staged": {
+    "*.{ts,tsx,js,cjs,mjs}": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "*.{json,md,yml,yaml,html,css}": [
+      "prettier --write"
+    ]
   }
 }

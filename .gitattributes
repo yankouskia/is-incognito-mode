@@ -1,0 +1,16 @@
+# Normalize line endings to LF in the repository
+* text=auto eol=lf
+
+# Treat these as binary
+*.png binary
+*.jpg binary
+*.gif binary
+*.ico binary
+*.woff binary
+*.woff2 binary
+
+# Linguist hints
+dist/* linguist-generated=true
+docs-site/* linguist-generated=true
+*.lock linguist-generated=true
+pnpm-lock.yaml linguist-generated=true
