@@ -1,0 +1,96 @@
+import { detectBrowser } from './browser.ts';
+import { IncognitoDetectionError } from './errors.ts';
+import { DEFAULT_PRIVATE_QUOTA_BYTES, runStrategies } from './strategies.ts';
+import type {
+  DetectIncognitoOptions,
+  DetectionGlobals,
+  DetectionResult,
+} from './types.ts';
+
+/**
+ * Detect whether the current browser is in private / incognito mode.
+ *
+ * Returns a rich {@link DetectionResult}. Most callers want the thinner
+ * {@link isIncognito} convenience instead.
+ *
+ * @throws {IncognitoDetectionError}
+ *   - `NOT_A_BROWSER` when invoked outside a browser-like environment.
+ *   - `UNSUPPORTED_BROWSER` when the browser was classified as `unknown` and
+ *     no fallback strategy applied.
+ *   - `PROBE_FAILED` when every applicable strategy threw before producing a
+ *     definitive answer.
+ *
+ * @example
+ * ```ts
+ * import { detectIncognito } from 'is-incognito-mode';
+ *
+ * const { isPrivate, browser, confidence, quota } = await detectIncognito();
+ * console.log(`${browser} (${confidence} confidence, quota: ${quota ?? '?'})`);
+ * ```
+ */
+export async function detectIncognito(
+  options: DetectIncognitoOptions = {},
+): Promise<DetectionResult> {
+  const globals = resolveGlobals(options.globals);
+  if (!isBrowserLike(globals)) {
+    throw new IncognitoDetectionError(
+      'NOT_A_BROWSER',
+      'is-incognito-mode can only run in a browser-like environment.',
+    );
+  }
+
+  const browser = detectBrowser({
+    userAgent: globals.navigator.userAgent,
+    ...(globals.navigator.vendor === undefined
+      ? {}
+      : { vendor: globals.navigator.vendor }),
+  });
+
+  const threshold =
+    options.privateQuotaThresholdBytes ?? DEFAULT_PRIVATE_QUOTA_BYTES;
+
+  return runStrategies(browser, globals, {
+    privateQuotaThresholdBytes: threshold,
+  });
+}
+
+/**
+ * Convenience wrapper around {@link detectIncognito} that resolves to the
+ * boolean verdict only. Drop-in compatible with v1's default export.
+ *
+ * @example
+ * ```ts
+ * import { isIncognito } from 'is-incognito-mode';
+ *
+ * if (await isIncognito()) {
+ *   showPaywall();
+ * }
+ * ```
+ *
+ * @throws {IncognitoDetectionError} See {@link detectIncognito}.
+ */
+export async function isIncognito(
+  options: DetectIncognitoOptions = {},
+): Promise<boolean> {
+  const result = await detectIncognito(options);
+  return result.isPrivate;
+}
+
+function resolveGlobals(
+  overrides: DetectionGlobals | undefined,
+): DetectionGlobals {
+  if (overrides) return overrides;
+  return {
+    navigator: typeof navigator === 'undefined' ? undefined : navigator,
+    window: typeof window === 'undefined' ? undefined : window,
+    indexedDB: typeof indexedDB === 'undefined' ? undefined : indexedDB,
+  };
+}
+
+function isBrowserLike(
+  globals: DetectionGlobals,
+): globals is DetectionGlobals & {
+  navigator: NonNullable<DetectionGlobals['navigator']>;
+} {
+  return Boolean(globals.navigator?.userAgent);
+}

@@ -32,43 +32,39 @@ const isIncognito = require('is-incognito-mode').default;
   - rejected if no possibility to identify
 */
 isIncognito()
-  .then(isPrivate => {
+  .then((isPrivate) => {
     if (isPrivate) {
       alert('There is no porn! Why are you using Incognito mode?');
     } else {
-      console.log('Incognito mode is NOT activated')
+      console.log('Incognito mode is NOT activated');
     }
   })
-  .catch(e => {
+  .catch((e) => {
     console.log(e.message);
-  })
+  });
 ```
-
 
 ## Demo
 
 [DEMO can be found here](https://yankouskia.github.io/is-incognito-mode/example/index.html)
 
-
-Incognito Window            |  Regular Window
-:-------------------------:|:-------------------------:
-<img src="./resources/private.png" data-canonical-src="./resources/private.png" width="300" />  |  <img src="./resources/public.png" data-canonical-src="./resources/public.png" width="300" />
-
+|                                        Incognito Window                                        |                                        Regular Window                                        |
+| :--------------------------------------------------------------------------------------------: | :------------------------------------------------------------------------------------------: |
+| <img src="./resources/private.png" data-canonical-src="./resources/private.png" width="300" /> | <img src="./resources/public.png" data-canonical-src="./resources/public.png" width="300" /> |
 
 ## API
 
 `isIncognito: Promise<boolean>`
 
 Result `Promise` is
-  - resolved with `true`, if Incognito mode is opened.
-  - resolved with `false`, if regular window is opened
-  - rejected if no possibility to identify
 
+- resolved with `true`, if Incognito mode is opened.
+- resolved with `false`, if regular window is opened
+- rejected if no possibility to identify
 
 ## Contributing
 
 `is-incognito-mode` is open-source library, opened for contributions
-
 
 ### License
 

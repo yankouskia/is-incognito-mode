@@ -74,7 +74,11 @@ toolchains.
 **What changed.** v2 adds named exports:
 
 ```ts
-import { isIncognito, detectIncognito, IncognitoDetectionError } from 'is-incognito-mode';
+import {
+  isIncognito,
+  detectIncognito,
+  IncognitoDetectionError,
+} from 'is-incognito-mode';
 
 const { isPrivate, browser, confidence, quota } = await detectIncognito();
 ```
