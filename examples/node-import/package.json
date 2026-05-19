@@ -1,0 +1,12 @@
+{
+  "name": "is-incognito-mode-node-example",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "start": "node index.mjs"
+  },
+  "dependencies": {
+    "is-incognito-mode": "link:../.."
+  }
+}

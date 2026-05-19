@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>is-incognito-mode · browser example</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        font-family:
+          ui-sans-serif,
+          system-ui,
+          -apple-system,
+          'Segoe UI',
+          Roboto,
+          sans-serif;
+      }
+      body {
+        margin: 0;
+        min-height: 100dvh;
+        display: grid;
+        place-items: center;
+        padding: 2rem;
+      }
+      main {
+        max-width: 36rem;
+        text-align: center;
+      }
+      h1 {
+        margin: 0 0 1rem;
+        font-size: clamp(1.5rem, 3vw + 1rem, 2.5rem);
+        font-weight: 600;
+      }
+      #verdict {
+        font-size: clamp(1.25rem, 2vw + 0.5rem, 1.75rem);
+        margin: 0 0 1rem;
+      }
+      #detail {
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        font-size: 0.9rem;
+        padding: 1rem;
+        background: color-mix(in oklab, currentColor 8%, transparent);
+        border-radius: 0.5rem;
+        text-align: left;
+        overflow-x: auto;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>is-incognito-mode</h1>
+      <p id="verdict">Probing…</p>
+      <pre id="detail"></pre>
+    </main>
+
+    <script type="module">
+      import { detectIncognito } from 'https://esm.sh/is-incognito-mode@2';
+
+      const verdict = document.getElementById('verdict');
+      const detail = document.getElementById('detail');
+
+      try {
+        const result = await detectIncognito();
+        verdict.textContent = result.isPrivate
+          ? 'You are in private / incognito mode.'
+          : 'You are in a regular browsing window.';
+        detail.textContent = JSON.stringify(result, null, 2);
+      } catch (error) {
+        verdict.textContent = 'Could not determine incognito state.';
+        detail.textContent = `${error.name}: ${error.message}\n(${error.code})`;
+      }
+    </script>
+  </body>
+</html>

@@ -73,16 +73,30 @@ There is no test suite. Baseline coverage is **0 %**.
 
 ## Phase-by-phase plan
 
-- [x] **Phase 0** — Reconnaissance: write this plan, `DECISIONS.md`, `BREAKING_CHANGES.md`, the v2 branch.
-- [ ] **Phase 1** — Foundation: bump engines, write `tsconfig.json`, `package.json` with `exports` map, `files`, `.nvmrc`, `.node-version`, `browserslist`, `packageManager`.
-- [ ] **Phase 2** — Dependencies: rip out `webpack`, `babel`, `get-browser`. Add `typescript`, `tsup`, `vitest`, `happy-dom`, `@vitest/coverage-v8`, `expect-type`, `tinybench`, ESLint/Prettier stack, `publint`, `@arethetypeswrong/cli`, `size-limit`, changesets.
-- [ ] **Phase 3** — Rewrite source in TypeScript. New detection module. Typed errors. Strict types on public API.
-- [ ] **Phase 4** — Tooling: ESLint flat config, Prettier, tsup config, lint-staged + simple-git-hooks, full script set.
-- [ ] **Phase 5** — Tests + coverage gates + benchmark.
-- [ ] **Phase 6** — CI workflows + Changesets + branch-protection note.
-- [ ] **Phase 7** — README rewrite, TypeDoc site, supporting docs, issue/PR templates.
-- [ ] **Phase 8** — Hygiene: `.gitignore`, `.gitattributes`, examples, size-limit budget, fresh-install smoke test.
-- [ ] **Phase 9** — Final verification: install/typecheck/lint/test/build all green, `publint` + `attw` clean, smoke-test installation from `npm pack`.
+- [x] **Phase 0** — Reconnaissance + `MIGRATION_PLAN.md` / `DECISIONS.md` / `BREAKING_CHANGES.md`.
+- [x] **Phase 1** — Foundation: engines, `tsconfig.json` (strict + `noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`, `verbatimModuleSyntax`), `package.json` with `exports` map, files allowlist, `.nvmrc` / `.node-version`, browserslist, `packageManager`.
+- [x] **Phase 2** — Dependencies: removed webpack/babel/get-browser; modern stack installed; zero runtime deps.
+- [x] **Phase 3** — Source rewritten in TypeScript across `browser.ts`, `strategies.ts`, `detect.ts`, `errors.ts`, `types.ts`, `index.ts`.
+- [x] **Phase 4** — ESLint v9 flat + Prettier + tsup dual build, lint-staged + simple-git-hooks installed.
+- [x] **Phase 5** — Vitest suite, 49 tests, **98.17 % lines / 100 % functions / 90.09 % branches**, type-level tests with `expectTypeOf`, tinybench benchmarks.
+- [x] **Phase 6** — `ci.yml` (3 × 3 matrix), `release.yml` (changesets + npm provenance via OIDC), `codeql.yml`, `docs.yml`, dependabot config.
+- [x] **Phase 7** — README rewrite, TypeDoc site builds, CONTRIBUTING / CODE_OF_CONDUCT / SECURITY / CHANGELOG, issue/PR templates, FUNDING.yml.
+- [x] **Phase 8** — Examples (`browser/`, `node-import/`, `vite-react/`), `.gitattributes`, size-limit budget enforced.
+- [x] **Phase 9** — Final verification ✓
+  - `pnpm install --frozen-lockfile` ✓
+  - `pnpm typecheck` ✓ (zero errors)
+  - `pnpm lint` ✓ (zero errors, zero warnings)
+  - `pnpm test` ✓ (49/49)
+  - `pnpm test:coverage` ✓ (above thresholds)
+  - `pnpm build` ✓
+  - `pnpm validate:package` ✓ (publint "All good!" + attw "No problems found 🌟")
+  - `pnpm size` ✓ (1.07 kB / 1.18 kB brotlied; budget 2 kB)
+  - `npm pack --dry-run` ✓ (10 files; 15 kB / 80 kB unpacked)
+  - Fresh-install smoke test ✓ (ESM / CJS / TS-strict all import cleanly from the tarball; typed error class crosses the module boundary)
+
+## Known limitations
+
+- **`attw` upstream bug**: versions 0.14 – 0.18 use a streaming-Gunzip pattern that only retains the last (empty) chunk, so any package whose decompressed contents exceed one fflate buffer fails with `Cannot read properties of undefined (reading 'filename')`. Worked around with a `pnpm patch` to `@arethetypeswrong/core` that concatenates all chunks. Upstream issue reference: <https://github.com/arethetypeswrong/arethetypeswrong.github.io>. Once an upstream fix lands, drop the patch.
 
 ## Risk register
 
