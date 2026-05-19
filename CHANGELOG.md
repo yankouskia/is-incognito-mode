@@ -1,5 +1,28 @@
 # Changelog
 
+## 2.0.2
+
+### Patch Changes
+
+- Fix: Chrome incognito false negative — raise default quota threshold from 120 MiB to 1 GiB.
+
+  Chrome 110+ raised the per-tab incognito storage ceiling: a private tab on a
+  desktop commonly reports `navigator.storage.estimate().quota` in the
+  500 MiB–1 GiB range. With the previous 120 MiB cutoff, every modern Chromium
+  incognito session was misclassified as normal.
+
+  `DEFAULT_PRIVATE_QUOTA_BYTES` is now `1024 × 1024 × 1024` (1 GiB), matching the
+  threshold used by the actively-maintained `detectIncognito` library and
+  covering Chromium, Firefox, and Safari private modes. Normal-mode quotas on
+  modern desktops are tens-to-hundreds of GiB so the safety margin is large.
+
+  A regression test pins the behaviour at a 800 MiB quota (the heart of the
+  modern Chromium incognito band).
+
+  If you previously depended on the 120 MiB cutoff, pass
+  `privateQuotaThresholdBytes: 120 * 1024 * 1024` to `detectIncognito()` to
+  restore the old behaviour.
+
 ## 2.0.1
 
 ### Patch Changes

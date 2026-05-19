@@ -51,8 +51,9 @@ export interface DetectIncognitoOptions {
   readonly globals?: DetectionGlobals;
   /**
    * Override the quota cutoff (bytes) below which `storage-quota` classifies
-   * the browser as private. Defaults to **120 MB** which matches the
-   * Chromium / Firefox / Safari thresholds observed in 2023-2026.
+   * the browser as private. Defaults to **1 GiB** — the threshold that
+   * separates incognito (≤ ~1 GiB on current Chrome / Firefox / Safari) from
+   * normal browsing (typically tens-to-hundreds of GiB).
    */
   readonly privateQuotaThresholdBytes?: number;
 }

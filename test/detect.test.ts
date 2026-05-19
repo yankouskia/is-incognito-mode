@@ -19,6 +19,23 @@ describe('detectIncognito — storage-quota strategy', () => {
     });
   });
 
+  it('returns isPrivate=true for modern-Chromium incognito quota (~800 MiB)', async () => {
+    // Chrome 110+ raised the incognito ceiling; on a desktop a private tab
+    // commonly reports quota in the 500 MiB–1 GiB band. This regression test
+    // pins our threshold to the band where modern Chromium incognito lives.
+    const modernIncognitoQuota = 800 * 1024 * 1024;
+    const result = await detectIncognito({
+      globals: buildGlobals('chromium', { quota: modernIncognitoQuota }),
+    });
+    expect(result).toMatchObject({
+      isPrivate: true,
+      browser: 'chromium',
+      confidence: 'high',
+      strategy: 'storage-quota',
+      quota: modernIncognitoQuota,
+    });
+  });
+
   it('returns isPrivate=false for Chromium with normal quota', async () => {
     const result = await detectIncognito({
       globals: buildGlobals('chromium', { quota: NORMAL_QUOTA }),

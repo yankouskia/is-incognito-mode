@@ -7,13 +7,24 @@ import type {
 } from './types.ts';
 
 /**
- * Default cutoff: 120 MB. Below this, every shipping browser we tested in 2024
- * is in a restricted (private) storage context. Above, it is normal.
+ * Default cutoff: 1 GiB. Below this, every shipping browser we tested is in a
+ * restricted (private) storage context; above, it is normal.
  *
- * Sources: detectIncognito.js research notes; cross-checked against Chrome
- * 120+, Firefox 121+, Safari 17+.
+ * History: pre-2022 Chrome capped incognito at ~120 MiB and that was the
+ * canonical threshold. Chrome 110+ raised the incognito ceiling and modern
+ * versions can report 500 MiB–1 GiB for an incognito tab on a desktop, so the
+ * old 120 MiB threshold misses Chromium-family private mode. 1 GiB
+ * (1024 × 1024 × 1024) is the value the actively maintained `detectIncognito`
+ * library settled on; we match it.
+ *
+ * On normal-mode desktops the quota is typically 10–80 % of free disk —
+ * tens or hundreds of GiB — so this threshold has substantial margin.
+ *
+ * Devices with very small total storage (low-end mobiles, restricted ChromeOS
+ * profiles) may produce false positives. Override with
+ * `privateQuotaThresholdBytes` if that matters to you.
  */
-export const DEFAULT_PRIVATE_QUOTA_BYTES = 120 * 1024 * 1024;
+export const DEFAULT_PRIVATE_QUOTA_BYTES = 1024 * 1024 * 1024;
 
 /**
  * Sentinel key used by the legacy localStorage probe. Random enough that

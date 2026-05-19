@@ -113,7 +113,7 @@ probes for older browsers. Click to expand:
 ```mermaid
 flowchart TD
     A[detectIncognito] --> B{navigator.storage<br/>.estimate available?}
-    B -- yes --> C{quota &lt; 120 MiB?}
+    B -- yes --> C{quota &lt; 1 GiB?}
     C -- yes --> R1([private — high confidence])
     C -- no --> R2([normal — high confidence])
     B -- no --> D{which browser?}
@@ -128,11 +128,13 @@ flowchart TD
 
 </details>
 
-The default threshold is **120 MiB** — Chromium gives incognito tabs ~10 % of
-disk capped at 120 MiB, and Firefox / Safari private modes cap similarly.
-Devices with very small total storage can hit false positives; raise the
-threshold or lower-bound against `navigator.deviceMemory * 1 GiB` if that
-matters to you.
+The default threshold is **1 GiB**. Modern Chromium incognito tabs report
+quota in the **500 MiB–1 GiB** range (the cap was ~120 MiB pre-2022 but Chrome
+raised it in 110+), and Firefox / Safari private modes are well below that.
+Normal-mode quotas on a desktop are typically tens-to-hundreds of GiB, so the
+margin is comfortable. Small-disk devices (low-end mobile, restricted ChromeOS
+profiles) may produce false positives — override with
+`privateQuotaThresholdBytes` if that matters to you.
 
 ---
 
@@ -183,8 +185,10 @@ const result = await detectIncognito({
 });
 ```
 
-Default is **120 MiB**. Raise it if you see false positives on small-disk
-devices.
+Default is **1 GiB** (matches the band where current Chrome / Firefox /
+Safari incognito sessions report quota). Lower it if you trust a tighter
+threshold for your audience, or raise it on devices with very little physical
+storage where normal mode itself may report less than 1 GiB.
 
 ### Injecting globals (for testing)
 
