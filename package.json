@@ -75,7 +75,7 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "test:bench": "vitest bench --run",
-    "docs": "typedoc",
+    "build:docs": "typedoc",
     "validate:package": "publint && attw --pack .",
     "size": "size-limit",
     "prepublishOnly": "pnpm run clean && pnpm run typecheck && pnpm run lint && pnpm run test && pnpm run build && pnpm run validate:package",
