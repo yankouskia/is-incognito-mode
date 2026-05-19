@@ -1,0 +1,38 @@
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: '/'
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 10
+    versioning-strategy: increase
+    labels: [dependencies]
+    groups:
+      eslint:
+        patterns:
+          - 'eslint*'
+          - '@eslint/*'
+          - 'typescript-eslint'
+      vitest:
+        patterns:
+          - 'vitest'
+          - '@vitest/*'
+      typescript:
+        patterns:
+          - 'typescript'
+          - 'tsup'
+      changesets:
+        patterns:
+          - '@changesets/*'
+    ignore:
+      # Hold majors for manual review (CHANGELOG audit + smoke test required).
+      - dependency-name: '*'
+        update-types: [version-update:semver-major]
+
+  - package-ecosystem: github-actions
+    directory: '/'
+    schedule:
+      interval: weekly
+      day: monday
+    labels: [dependencies, ci]
