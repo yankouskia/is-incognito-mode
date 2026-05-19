@@ -83,7 +83,7 @@
     "prepare": "simple-git-hooks || true"
   },
   "devDependencies": {
-    "@arethetypeswrong/cli": "^0.17.4",
+    "@arethetypeswrong/cli": "^0.18.2",
     "@changesets/cli": "^2.27.11",
     "@eslint/js": "^9.18.0",
     "@size-limit/preset-small-lib": "^11.1.6",
@@ -137,5 +137,10 @@
     "*.{json,md,yml,yaml,html,css}": [
       "prettier --write"
     ]
+  },
+  "pnpm": {
+    "patchedDependencies": {
+      "@arethetypeswrong/core@0.18.2": "patches/@arethetypeswrong__core@0.18.2.patch"
+    }
   }
 }

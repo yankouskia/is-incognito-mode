@@ -1,0 +1,23 @@
+diff --git a/dist/createPackage.js b/dist/createPackage.js
+index 1b8fb1c65a9ccd0fa6448af0781297beeeae9772..98830177197d58b7ace2b7234a40004966211860 100644
+--- a/dist/createPackage.js
++++ b/dist/createPackage.js
+@@ -224,8 +224,16 @@ export function createPackageFromTarballData(tarball) {
+ function extractTarball(tarball) {
+     var _a;
+     // Use streaming API to work around https://github.com/101arrowz/fflate/issues/207
+-    let unzipped;
+-    new Gunzip((chunk) => (unzipped = chunk)).push(tarball, /*final*/ true);
++    // Patched: concat all chunks (the upstream version only kept the last
++    // empty chunk, breaking tarballs whose decompressed size exceeds one
++    // fflate buffer).
++    const chunks = [];
++    new Gunzip((chunk) => chunks.push(chunk)).push(tarball, /*final*/ true);
++    let totalLen = 0;
++    for (const c of chunks) totalLen += c.length;
++    const unzipped = new Uint8Array(totalLen);
++    let off = 0;
++    for (const c of chunks) { unzipped.set(c, off); off += c.length; }
+     const data = untar(unzipped);
+     const prefix = data[0].filename.substring(0, data[0].filename.indexOf("/") + 1);
+     const packageJsonText = (_a = data.find((f) => f.filename === `${prefix}package.json`)) === null || _a === void 0 ? void 0 : _a.fileData;
