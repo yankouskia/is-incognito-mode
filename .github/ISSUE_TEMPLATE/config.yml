@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Discussions
+    url: https://github.com/yankouskia/is-incognito-mode/discussions
+    about: Open-ended questions, ideas, and showcase belong here.
+  - name: Security report
+    url: mailto:alex.yankouski@gmail.com
+    about: Email private vulnerability reports — see SECURITY.md.
