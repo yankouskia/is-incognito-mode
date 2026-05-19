@@ -17,7 +17,12 @@ export {
 export { DEFAULT_PRIVATE_QUOTA_BYTES } from './strategies.ts';
 export type {
   DetectionConfidence,
+  DetectionGlobals,
   DetectionResult,
   DetectionStrategyName,
   DetectIncognitoOptions,
+  NavigatorLike,
+  StorageManagerLike,
+  StorageLike,
+  WindowLike,
 } from './types.ts';

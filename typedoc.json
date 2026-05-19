@@ -1,0 +1,27 @@
+{
+  "$schema": "https://typedoc.org/schema.json",
+  "entryPoints": ["src/index.ts"],
+  "out": "docs-site",
+  "name": "is-incognito-mode",
+  "readme": "README.md",
+  "tsconfig": "tsconfig.json",
+  "plugin": ["typedoc-material-theme"],
+  "themeColor": "#3f51b5",
+  "includeVersion": true,
+  "categorizeByGroup": true,
+  "navigationLinks": {
+    "GitHub": "https://github.com/yankouskia/is-incognito-mode",
+    "npm": "https://www.npmjs.com/package/is-incognito-mode"
+  },
+  "sidebarLinks": {
+    "Changelog": "https://github.com/yankouskia/is-incognito-mode/blob/master/CHANGELOG.md"
+  },
+  "excludePrivate": true,
+  "excludeInternal": true,
+  "excludeExternals": true,
+  "validation": {
+    "notExported": true,
+    "invalidLink": true,
+    "notDocumented": false
+  }
+}
