@@ -17,79 +17,79 @@ importers:
         specifier: ^0.18.2
         version: 0.18.2
       '@changesets/cli':
-        specifier: ^2.27.11
+        specifier: ^2.31.0
         version: 2.31.0(@types/node@22.19.19)
       '@eslint/js':
-        specifier: ^9.18.0
+        specifier: ^9.39.4
         version: 9.39.4
       '@size-limit/preset-small-lib':
-        specifier: ^11.1.6
+        specifier: ^11.2.0
         version: 11.2.0(size-limit@11.2.0)
       '@types/node':
-        specifier: ^22.10.5
+        specifier: ^22.19.19
         version: 22.19.19
       '@vitest/coverage-v8':
-        specifier: ^2.1.8
+        specifier: ^2.1.9
         version: 2.1.9(vitest@2.1.9(@types/node@22.19.19)(happy-dom@16.8.1))
       eslint:
-        specifier: ^9.18.0
+        specifier: ^9.39.4
         version: 9.39.4(jiti@2.7.0)
       eslint-config-prettier:
-        specifier: ^9.1.0
+        specifier: ^9.1.2
         version: 9.1.2(eslint@9.39.4(jiti@2.7.0))
       eslint-plugin-n:
-        specifier: ^17.15.1
+        specifier: ^17.24.0
         version: 17.24.0(eslint@9.39.4(jiti@2.7.0))(typescript@5.9.3)
       eslint-plugin-promise:
-        specifier: ^7.2.1
+        specifier: ^7.3.0
         version: 7.3.0(eslint@9.39.4(jiti@2.7.0))
       eslint-plugin-unicorn:
         specifier: ^56.0.1
         version: 56.0.1(eslint@9.39.4(jiti@2.7.0))
       expect-type:
-        specifier: ^1.1.0
+        specifier: ^1.3.0
         version: 1.3.0
       happy-dom:
-        specifier: ^16.3.0
+        specifier: ^16.8.1
         version: 16.8.1
       lint-staged:
-        specifier: ^15.3.0
+        specifier: ^15.5.2
         version: 15.5.2
       prettier:
-        specifier: ^3.4.2
+        specifier: ^3.8.3
         version: 3.8.3
       publint:
-        specifier: ^0.3.2
+        specifier: ^0.3.21
         version: 0.3.21
       rimraf:
-        specifier: ^6.0.1
+        specifier: ^6.1.3
         version: 6.1.3
       simple-git-hooks:
-        specifier: ^2.11.1
+        specifier: ^2.13.1
         version: 2.13.1
       size-limit:
-        specifier: ^11.1.6
+        specifier: ^11.2.0
         version: 11.2.0
       tinybench:
-        specifier: ^3.0.6
+        specifier: ^3.1.1
         version: 3.1.1
       tsup:
-        specifier: ^8.3.5
+        specifier: ^8.5.1
         version: 8.5.1(jiti@2.7.0)(postcss@8.5.14)(typescript@5.9.3)(yaml@2.9.0)
       typedoc:
-        specifier: ^0.28.0
+        specifier: ^0.28.19
         version: 0.28.19(typescript@5.9.3)
       typedoc-material-theme:
-        specifier: ^1.4.0
+        specifier: ^1.4.1
         version: 1.4.1(typedoc@0.28.19(typescript@5.9.3))
       typescript:
-        specifier: ^5.7.3
+        specifier: ^5.9.3
         version: 5.9.3
       typescript-eslint:
-        specifier: ^8.20.0
+        specifier: ^8.59.4
         version: 8.59.4(eslint@9.39.4(jiti@2.7.0))(typescript@5.9.3)
       vitest:
-        specifier: ^2.1.8
+        specifier: ^2.1.9
         version: 2.1.9(@types/node@22.19.19)(happy-dom@16.8.1)
 
 packages:
