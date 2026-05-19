@@ -30,6 +30,8 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
+      - run: pnpm run build
+
       - run: pnpm run build:docs
 
       - uses: actions/configure-pages@v5
