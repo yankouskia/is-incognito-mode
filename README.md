@@ -26,29 +26,89 @@ _Open it in a normal window. Then re-open it in private/incognito mode. Watch th
 
 ---
 
-## Why this exists
+## 30-second tour
 
-Browsers don't expose a "private mode" API. They _do_, however, leak the fact
-indirectly through **resource limits** and **storage shape**.
+```sh
+npm install is-incognito-mode
+```
 
-`is-incognito-mode` wraps the **current state-of-the-art detection** in a tiny,
-typed, dependency-free package — so you don't have to hand-roll the heuristic
-in every project, and so you stop using detection tricks that browsers patched
-out years ago.
+```ts
+import { isIncognito } from 'is-incognito-mode';
 
-Common use cases:
+if (await isIncognito()) {
+  showPaywall();
+} else {
+  trackVisit();
+}
+```
 
-- **Soft paywalls** — discourage incognito bypass without hard-blocking.
-- **Analytics opt-out** signals — respect users who clearly want a clean session.
-- **Surveys & auth flows** — warn before storing state that vanishes at window-close.
-- **Fraud signals** — one input among many. Never the only one.
+That's it. **One async call, one boolean.** Works on Chrome, Firefox, Safari,
+Edge, and (best-effort) the long tail of older WebKit shells.
+
+Need more than a yes/no? Use [`detectIncognito()`](#rich-detection-result) for
+a typed object with `browser`, `confidence`, `quota`, and `strategy` fields.
 
 ---
 
-## How it works
+## Why you'd use this
 
-The library prefers a **direct signal** when one is available, and falls back
-to engine-specific heuristics for older browsers.
+Browsers don't expose a "private mode" API on purpose — but private windows
+still leak the fact through **resource limits** and **storage shape**.
+`is-incognito-mode` packages the current state-of-the-art detection (quota
+probing via `navigator.storage.estimate()`) as a tiny, typed, zero-dep module,
+so you can stop hand-rolling heuristics that browsers patched out in 2019.
+
+A few real-world fits:
+
+| Scenario                  | What you do                                                 |
+| ------------------------- | ----------------------------------------------------------- |
+| **Soft paywall**          | Discourage incognito bypass without hard-blocking the user. |
+| **Respectful analytics**  | Skip beacon calls in private sessions to honor the signal.  |
+| **Long forms / surveys**  | Warn before storing state that will vanish on close.        |
+| **Fraud / abuse signals** | One input among many — never the sole decider.              |
+| **E2E test conditioning** | Branch tests based on whether you're driving a private tab. |
+
+---
+
+## Install
+
+```sh
+pnpm add is-incognito-mode      # or  npm i is-incognito-mode
+                                # or  yarn add is-incognito-mode
+                                # or  bun add is-incognito-mode
+```
+
+**No-install — straight from a CDN**:
+
+```html
+<script type="module">
+  import { isIncognito } from 'https://esm.sh/is-incognito-mode@2';
+  console.log(await isIncognito());
+</script>
+```
+
+---
+
+## See it run
+
+A ready-to-run demo page is hosted alongside the docs:
+
+> **https://yankouskia.github.io/is-incognito-mode/demo/**
+
+Open it once in a regular window, then once in incognito/private — the
+verdict, browser, confidence, quota, and strategy update live.
+Source: [`examples/browser/index.html`](./examples/browser/index.html) (single
+static file, no build step).
+
+---
+
+## How it decides (under the hood)
+
+The library tries the cleanest signal first and falls back to engine-specific
+probes for older browsers. Click to expand:
+
+<details>
+<summary>Detection flow diagram</summary>
 
 ```mermaid
 flowchart TD
@@ -66,65 +126,13 @@ flowchart TD
     G --> R5([private/normal — low])
 ```
 
+</details>
+
 The default threshold is **120 MiB** — Chromium gives incognito tabs ~10 % of
-disk capped at 120 MiB, Firefox PB caps quota similarly. Devices with very
-small total storage may produce false positives; raise the threshold or
-lower-bound it against `navigator.deviceMemory * 1 GiB` if that matters
-to you.
-
----
-
-## Install
-
-```sh
-pnpm add is-incognito-mode
-# or
-npm install is-incognito-mode
-# or
-yarn add is-incognito-mode
-# or
-bun add is-incognito-mode
-```
-
-**No-install via CDN**:
-
-```html
-<script type="module">
-  import { isIncognito } from 'https://esm.sh/is-incognito-mode@2';
-  console.log(await isIncognito());
-</script>
-```
-
----
-
-## Quickstart
-
-```ts
-import { isIncognito } from 'is-incognito-mode';
-
-if (await isIncognito()) {
-  showPaywall();
-} else {
-  trackVisit();
-}
-```
-
-That's it. Honestly.
-
----
-
-## Live demo
-
-A ready-to-run page that calls `detectIncognito()` and renders the result is
-hosted alongside the docs:
-
-> **https://yankouskia.github.io/is-incognito-mode/demo/**
-
-The source lives at [`examples/browser/index.html`](./examples/browser/index.html)
-— it's a single static file. No bundler, no build step.
-
-Open it once in a regular window, then once in incognito/private. The
-**verdict, browser, confidence, quota, and strategy** all update live.
+disk capped at 120 MiB, and Firefox / Safari private modes cap similarly.
+Devices with very small total storage can hit false positives; raise the
+threshold or lower-bound against `navigator.deviceMemory * 1 GiB` if that
+matters to you.
 
 ---
 
@@ -149,7 +157,7 @@ const { isPrivate, browser, confidence, quota, strategy } =
 console.log(
   `${browser} (${confidence}) — strategy: ${strategy}, quota: ${quota}`,
 );
-// → "chromium (high) — strategy: storage-estimate, quota: 33554432"
+// → "chromium (high) — strategy: storage-quota, quota: 33554432"
 ```
 
 Fields on `DetectionResult`:

@@ -50,15 +50,3 @@ export function detectBrowser(source?: UserAgentSource): BrowserName {
 
   return 'unknown';
 }
-
-/**
- * Read browser identity from the live `navigator` if one exists. Returns
- * `'unknown'` outside browsers so callers can fall through to a typed error.
- */
-export function detectCurrentBrowser(): BrowserName {
-  if (typeof navigator === 'undefined') return 'unknown';
-  return detectBrowser({
-    userAgent: navigator.userAgent,
-    vendor: navigator.vendor,
-  });
-}

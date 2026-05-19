@@ -38,8 +38,7 @@ export type DetectionStrategyName =
   | 'storage-quota'
   | 'safari-storage'
   | 'firefox-indexeddb'
-  | 'legacy-edge'
-  | 'unknown';
+  | 'legacy-edge';
 
 /**
  * Options for {@link detectIncognito}.

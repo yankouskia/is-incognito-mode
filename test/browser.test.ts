@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { detectBrowser, detectCurrentBrowser } from '../src/browser.ts';
+import { detectBrowser } from '../src/browser.ts';
 
 describe('detectBrowser', () => {
   it.each([
@@ -72,12 +72,5 @@ describe('detectBrowser', () => {
         userAgent: 'Mozilla/5.0 AppleWebKit/605 Safari/605',
       }),
     ).toBe('safari');
-  });
-});
-
-describe('detectCurrentBrowser', () => {
-  it('returns a string (happy-dom navigator is present)', () => {
-    const result = detectCurrentBrowser();
-    expect(typeof result).toBe('string');
   });
 });
