@@ -75,7 +75,7 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "test:bench": "vitest bench --run",
-    "build:docs": "typedoc",
+    "build:docs": "typedoc && node scripts/copy-demo.mjs",
     "validate:package": "publint && attw --pack .",
     "size": "size-limit",
     "prepublishOnly": "pnpm run clean && pnpm run typecheck && pnpm run lint && pnpm run test && pnpm run build && pnpm run validate:package",
