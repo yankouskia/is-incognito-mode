@@ -1,5 +1,19 @@
 # Changelog
 
+## 2.0.1
+
+### Patch Changes
+
+- Docs and housekeeping pass following the v2.0.0 release.
+  - README leads with a 30-second tour before the "why" section so readers see
+    action first; the detection-flow Mermaid diagram is collapsible; use-cases
+    promoted to a scenario table; fixed a stale code-sample strategy name
+    (`storage-quota`, not `storage-estimate`).
+  - Removed unused `detectCurrentBrowser()` export (no production caller) and
+    the corresponding test. Only `detectBrowser()` taking explicit args is used.
+  - Removed the never-returned `'unknown'` member from `DetectionStrategyName`.
+  - `.gitignore` adds `.claude/`.
+
 ## 2.0.0
 
 ### Major Changes
