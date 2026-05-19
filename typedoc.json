@@ -9,11 +9,27 @@
   "themeColor": "#3f51b5",
   "includeVersion": true,
   "categorizeByGroup": true,
+  "highlightLanguages": [
+    "bash",
+    "console",
+    "css",
+    "html",
+    "javascript",
+    "json",
+    "jsonc",
+    "json5",
+    "yaml",
+    "tsx",
+    "typescript",
+    "mermaid"
+  ],
   "navigationLinks": {
+    "Live demo": "https://yankouskia.github.io/is-incognito-mode/demo/",
     "GitHub": "https://github.com/yankouskia/is-incognito-mode",
     "npm": "https://www.npmjs.com/package/is-incognito-mode"
   },
   "sidebarLinks": {
+    "Live demo": "https://yankouskia.github.io/is-incognito-mode/demo/",
     "Changelog": "https://github.com/yankouskia/is-incognito-mode/blob/master/CHANGELOG.md"
   },
   "excludePrivate": true,

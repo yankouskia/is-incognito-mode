@@ -3,11 +3,28 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>is-incognito-mode · browser example</title>
+    <title>is-incognito-mode · live demo</title>
+    <meta
+      name="description"
+      content="Live demo: detect whether the current browser tab is in private / incognito mode."
+    />
     <style>
       :root {
-        color-scheme: light dark;
+        color-scheme: dark;
+        --bg-a: #0a0e27;
+        --bg-b: #1a1a3e;
+        --bg-c: #2d1b4e;
+        --accent: #7c5cff;
+        --accent-glow: rgba(124, 92, 255, 0.4);
+        --positive: #34d399;
+        --negative: #f87171;
+        --neutral: #fbbf24;
+        --text: #f1f5f9;
+        --text-dim: #94a3b8;
+        --card-bg: rgba(255, 255, 255, 0.04);
+        --card-border: rgba(255, 255, 255, 0.08);
         font-family:
+          'Inter',
           ui-sans-serif,
           system-ui,
           -apple-system,
@@ -15,60 +32,566 @@
           Roboto,
           sans-serif;
       }
-      body {
+
+      * {
+        box-sizing: border-box;
         margin: 0;
+        padding: 0;
+      }
+
+      html,
+      body {
         min-height: 100dvh;
+      }
+
+      body {
+        color: var(--text);
+        background:
+          radial-gradient(
+            ellipse 80% 60% at 20% 20%,
+            var(--accent-glow) 0%,
+            transparent 50%
+          ),
+          radial-gradient(
+            ellipse 60% 50% at 80% 80%,
+            rgba(244, 114, 182, 0.25) 0%,
+            transparent 50%
+          ),
+          linear-gradient(
+            135deg,
+            var(--bg-a) 0%,
+            var(--bg-b) 50%,
+            var(--bg-c) 100%
+          );
+        background-attachment: fixed;
         display: grid;
         place-items: center;
-        padding: 2rem;
+        padding: 2rem 1rem;
+        overflow-x: hidden;
+        transition: background 0.6s ease;
       }
+
+      body.is-private {
+        --accent: #f472b6;
+        --accent-glow: rgba(244, 114, 182, 0.35);
+      }
+
+      body.is-normal {
+        --accent: #34d399;
+        --accent-glow: rgba(52, 211, 153, 0.35);
+      }
+
+      body::before {
+        content: '';
+        position: fixed;
+        inset: 0;
+        pointer-events: none;
+        background-image: radial-gradient(
+          circle,
+          rgba(255, 255, 255, 0.03) 1px,
+          transparent 1px
+        );
+        background-size: 32px 32px;
+        z-index: 0;
+      }
+
       main {
-        max-width: 36rem;
+        position: relative;
+        z-index: 1;
+        width: 100%;
+        max-width: 44rem;
         text-align: center;
       }
-      h1 {
-        margin: 0 0 1rem;
-        font-size: clamp(1.5rem, 3vw + 1rem, 2.5rem);
+
+      header {
+        margin-bottom: 2.5rem;
+      }
+
+      .eyebrow {
+        font-size: 0.8rem;
+        text-transform: uppercase;
+        letter-spacing: 0.2em;
+        color: var(--text-dim);
+        margin-bottom: 0.75rem;
         font-weight: 600;
       }
-      #verdict {
-        font-size: clamp(1.25rem, 2vw + 0.5rem, 1.75rem);
-        margin: 0 0 1rem;
+
+      h1 {
+        font-size: clamp(2rem, 5vw + 1rem, 3.5rem);
+        font-weight: 800;
+        background: linear-gradient(
+          135deg,
+          var(--text) 0%,
+          var(--accent) 50%,
+          var(--text) 100%
+        );
+        background-size: 200% 200%;
+        -webkit-background-clip: text;
+        background-clip: text;
+        -webkit-text-fill-color: transparent;
+        animation: shimmer 6s linear infinite;
+        letter-spacing: -0.03em;
+        line-height: 1.1;
       }
-      #detail {
-        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-        font-size: 0.9rem;
-        padding: 1rem;
-        background: color-mix(in oklab, currentColor 8%, transparent);
-        border-radius: 0.5rem;
+
+      @keyframes shimmer {
+        0%,
+        100% {
+          background-position: 0% 50%;
+        }
+        50% {
+          background-position: 100% 50%;
+        }
+      }
+
+      .tagline {
+        margin-top: 1rem;
+        color: var(--text-dim);
+        font-size: 1.05rem;
+        line-height: 1.5;
+      }
+
+      .card {
+        background: var(--card-bg);
+        backdrop-filter: blur(20px) saturate(160%);
+        -webkit-backdrop-filter: blur(20px) saturate(160%);
+        border: 1px solid var(--card-border);
+        border-radius: 1.5rem;
+        padding: 2.5rem 2rem;
+        box-shadow:
+          0 25px 50px -12px rgba(0, 0, 0, 0.5),
+          0 0 0 1px var(--card-border) inset,
+          0 0 60px -20px var(--accent-glow);
+        transition:
+          box-shadow 0.6s ease,
+          transform 0.3s ease;
+      }
+
+      .card:hover {
+        transform: translateY(-2px);
+      }
+
+      .status-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.35rem 0.9rem;
+        border-radius: 999px;
+        font-size: 0.8rem;
+        font-weight: 600;
+        background: rgba(255, 255, 255, 0.06);
+        border: 1px solid var(--card-border);
+        color: var(--text-dim);
+        margin-bottom: 1.5rem;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+      }
+
+      .status-pill::before {
+        content: '';
+        width: 0.5rem;
+        height: 0.5rem;
+        border-radius: 50%;
+        background: var(--text-dim);
+        animation: pulse 1.6s ease-in-out infinite;
+      }
+
+      .is-private .status-pill::before,
+      .is-normal .status-pill::before,
+      .is-error .status-pill::before {
+        animation: none;
+        background: var(--accent);
+        box-shadow: 0 0 12px var(--accent);
+      }
+
+      @keyframes pulse {
+        0%,
+        100% {
+          opacity: 0.4;
+          transform: scale(0.9);
+        }
+        50% {
+          opacity: 1;
+          transform: scale(1.1);
+        }
+      }
+
+      .verdict {
+        font-size: clamp(1.5rem, 3vw + 1rem, 2.25rem);
+        font-weight: 700;
+        line-height: 1.25;
+        margin-bottom: 0.5rem;
+        letter-spacing: -0.02em;
+      }
+
+      .subverdict {
+        color: var(--text-dim);
+        font-size: 1rem;
+        margin-bottom: 2rem;
+      }
+
+      .metrics {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+        gap: 0.75rem;
+        margin-bottom: 1.5rem;
+      }
+
+      .metric {
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px solid var(--card-border);
+        border-radius: 0.85rem;
+        padding: 0.9rem 0.75rem;
         text-align: left;
+        opacity: 0;
+        animation: rise 0.5s ease forwards;
+      }
+
+      .metric:nth-child(1) {
+        animation-delay: 0.05s;
+      }
+      .metric:nth-child(2) {
+        animation-delay: 0.1s;
+      }
+      .metric:nth-child(3) {
+        animation-delay: 0.15s;
+      }
+      .metric:nth-child(4) {
+        animation-delay: 0.2s;
+      }
+
+      @keyframes rise {
+        from {
+          opacity: 0;
+          transform: translateY(8px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      .metric-label {
+        font-size: 0.7rem;
+        text-transform: uppercase;
+        letter-spacing: 0.12em;
+        color: var(--text-dim);
+        margin-bottom: 0.4rem;
+        font-weight: 600;
+      }
+
+      .metric-value {
+        font-family:
+          'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+        font-size: 0.95rem;
+        color: var(--text);
+        font-weight: 500;
+        word-break: break-word;
+      }
+
+      details {
+        margin-top: 1.5rem;
+        text-align: left;
+        background: rgba(0, 0, 0, 0.25);
+        border-radius: 0.85rem;
+        border: 1px solid var(--card-border);
+      }
+
+      summary {
+        cursor: pointer;
+        padding: 0.85rem 1rem;
+        font-size: 0.85rem;
+        color: var(--text-dim);
+        user-select: none;
+        font-weight: 500;
+      }
+
+      summary:hover {
+        color: var(--text);
+      }
+
+      pre {
+        font-family:
+          'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+        font-size: 0.78rem;
+        padding: 0 1rem 1rem;
+        color: var(--text);
         overflow-x: auto;
+        line-height: 1.5;
+      }
+
+      .actions {
+        display: flex;
+        gap: 0.75rem;
+        justify-content: center;
+        flex-wrap: wrap;
+        margin-top: 1.75rem;
+      }
+
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        padding: 0.65rem 1.1rem;
+        border-radius: 0.7rem;
+        font-size: 0.88rem;
+        font-weight: 600;
+        text-decoration: none;
+        border: 1px solid var(--card-border);
+        background: rgba(255, 255, 255, 0.04);
+        color: var(--text);
+        transition: all 0.2s ease;
+        cursor: pointer;
+        font-family: inherit;
+      }
+
+      .btn:hover {
+        background: rgba(255, 255, 255, 0.08);
+        border-color: var(--accent);
+        transform: translateY(-1px);
+      }
+
+      .btn-primary {
+        background: var(--accent);
+        color: #0a0e27;
+        border-color: var(--accent);
+      }
+
+      .btn-primary:hover {
+        filter: brightness(1.1);
+      }
+
+      footer {
+        margin-top: 2.5rem;
+        font-size: 0.85rem;
+        color: var(--text-dim);
+      }
+
+      footer a {
+        color: var(--accent);
+        text-decoration: none;
+        font-weight: 500;
+      }
+
+      footer a:hover {
+        text-decoration: underline;
+      }
+
+      .spinner {
+        display: inline-block;
+        width: 1rem;
+        height: 1rem;
+        border: 2px solid var(--text-dim);
+        border-top-color: var(--accent);
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+        vertical-align: middle;
+        margin-right: 0.5rem;
+      }
+
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+
+      .skeleton {
+        background: linear-gradient(
+          90deg,
+          rgba(255, 255, 255, 0.04) 0%,
+          rgba(255, 255, 255, 0.1) 50%,
+          rgba(255, 255, 255, 0.04) 100%
+        );
+        background-size: 200% 100%;
+        animation: skeleton 1.4s ease-in-out infinite;
+        border-radius: 0.3rem;
+        color: transparent;
+      }
+
+      @keyframes skeleton {
+        0% {
+          background-position: 200% 0;
+        }
+        100% {
+          background-position: -200% 0;
+        }
       }
     </style>
   </head>
   <body>
     <main>
-      <h1>is-incognito-mode</h1>
-      <p id="verdict">Probing…</p>
-      <pre id="detail"></pre>
+      <header>
+        <p class="eyebrow">Live demo</p>
+        <h1>is-incognito-mode</h1>
+        <p class="tagline">
+          One async call. Real verdict. Real signals — straight from your
+          browser right now.
+        </p>
+      </header>
+
+      <section class="card" id="card">
+        <span class="status-pill" id="pill">
+          <span id="pillText">Probing</span>
+        </span>
+
+        <h2 class="verdict" id="verdict">
+          <span class="spinner"></span>Detecting your browsing mode…
+        </h2>
+        <p class="subverdict" id="subverdict">
+          Running quota probe via <code>navigator.storage.estimate()</code>
+        </p>
+
+        <div class="metrics">
+          <div class="metric">
+            <div class="metric-label">Mode</div>
+            <div class="metric-value skeleton" id="m-mode">………</div>
+          </div>
+          <div class="metric">
+            <div class="metric-label">Browser</div>
+            <div class="metric-value skeleton" id="m-browser">………</div>
+          </div>
+          <div class="metric">
+            <div class="metric-label">Confidence</div>
+            <div class="metric-value skeleton" id="m-confidence">………</div>
+          </div>
+          <div class="metric">
+            <div class="metric-label">Storage quota</div>
+            <div class="metric-value skeleton" id="m-quota">………</div>
+          </div>
+        </div>
+
+        <details>
+          <summary>Raw DetectionResult</summary>
+          <pre id="detail">Loading…</pre>
+        </details>
+
+        <div class="actions">
+          <button class="btn btn-primary" id="rerun" type="button">
+            Re-run detection
+          </button>
+          <a class="btn" href="https://www.npmjs.com/package/is-incognito-mode"
+            >View on npm</a
+          >
+          <a class="btn" href="https://github.com/yankouskia/is-incognito-mode"
+            >GitHub repo</a
+          >
+        </div>
+      </section>
+
+      <footer>
+        Open this page once in a <strong>normal</strong> window and once in
+        <strong>private / incognito</strong>. The verdict flips.<br />
+        Source:
+        <a href="../examples/browser/index.html">examples/browser/index.html</a>
+        in
+        <a href="https://github.com/yankouskia/is-incognito-mode">the repo</a>.
+      </footer>
     </main>
 
     <script type="module">
       import { detectIncognito } from 'https://esm.sh/is-incognito-mode@2';
 
-      const verdict = document.getElementById('verdict');
-      const detail = document.getElementById('detail');
+      const $ = (id) => document.getElementById(id);
 
-      try {
-        const result = await detectIncognito();
-        verdict.textContent = result.isPrivate
-          ? 'You are in private / incognito mode.'
-          : 'You are in a regular browsing window.';
-        detail.textContent = JSON.stringify(result, null, 2);
-      } catch (error) {
-        verdict.textContent = 'Could not determine incognito state.';
-        detail.textContent = `${error.name}: ${error.message}\n(${error.code})`;
+      const card = $('card');
+      const pill = $('pill');
+      const pillText = $('pillText');
+      const verdict = $('verdict');
+      const subverdict = $('subverdict');
+      const detail = $('detail');
+      const rerun = $('rerun');
+
+      const fields = {
+        mode: $('m-mode'),
+        browser: $('m-browser'),
+        confidence: $('m-confidence'),
+        quota: $('m-quota'),
+      };
+
+      function formatBytes(n) {
+        if (n === null || n === undefined) return '—';
+        const units = ['B', 'KiB', 'MiB', 'GiB', 'TiB'];
+        let i = 0;
+        let v = n;
+        while (v >= 1024 && i < units.length - 1) {
+          v /= 1024;
+          i += 1;
+        }
+        return `${v.toFixed(v >= 100 || i === 0 ? 0 : 2)} ${units[i]}`;
       }
+
+      function setBusy() {
+        document.body.classList.remove('is-private', 'is-normal', 'is-error');
+        pillText.textContent = 'Probing';
+        verdict.innerHTML =
+          '<span class="spinner"></span>Detecting your browsing mode…';
+        subverdict.textContent =
+          'Running quota probe via navigator.storage.estimate()';
+        for (const el of Object.values(fields)) {
+          el.classList.add('skeleton');
+          el.textContent = '………';
+        }
+        detail.textContent = 'Loading…';
+      }
+
+      function render(result) {
+        const isPrivate = result.isPrivate === true;
+        document.body.classList.remove('is-error');
+        document.body.classList.toggle('is-private', isPrivate);
+        document.body.classList.toggle('is-normal', !isPrivate);
+
+        pillText.textContent = 'Detected';
+        verdict.textContent = isPrivate
+          ? 'You are browsing in private / incognito mode.'
+          : 'You are in a regular browsing window.';
+        subverdict.textContent = isPrivate
+          ? 'Storage is sandboxed and will be cleared when this window closes.'
+          : 'Storage is persistent across sessions.';
+
+        for (const el of Object.values(fields)) el.classList.remove('skeleton');
+        fields.mode.textContent = isPrivate ? 'private' : 'normal';
+        fields.browser.textContent = result.browser ?? '—';
+        fields.confidence.textContent = result.confidence ?? '—';
+        fields.quota.textContent = formatBytes(result.quota);
+        detail.textContent = JSON.stringify(result, null, 2);
+      }
+
+      function renderError(err) {
+        document.body.classList.remove('is-private', 'is-normal');
+        document.body.classList.add('is-error');
+        pillText.textContent = 'Error';
+        verdict.textContent = 'Could not determine browsing mode.';
+        const code = err && err.code ? ` (${err.code})` : '';
+        subverdict.textContent = `${err && err.name ? err.name : 'Error'}${code}: ${err && err.message ? err.message : String(err)}`;
+        for (const el of Object.values(fields)) el.classList.remove('skeleton');
+        fields.mode.textContent = '—';
+        fields.browser.textContent = '—';
+        fields.confidence.textContent = '—';
+        fields.quota.textContent = '—';
+        detail.textContent = JSON.stringify(
+          {
+            error: { name: err?.name, message: err?.message, code: err?.code },
+          },
+          null,
+          2,
+        );
+      }
+
+      async function run() {
+        setBusy();
+        try {
+          const result = await detectIncognito();
+          render(result);
+        } catch (err) {
+          renderError(err);
+        }
+      }
+
+      rerun.addEventListener('click', () => {
+        void run();
+      });
+
+      void run();
     </script>
   </body>
 </html>
