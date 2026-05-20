@@ -3,82 +3,144 @@ import { describe, expect, it } from 'vitest';
 import { detectIncognito, isIncognito } from '../src/detect.ts';
 import { IncognitoDetectionError } from '../src/errors.ts';
 
-import { NORMAL_QUOTA, PRIVATE_QUOTA, buildGlobals } from './helpers.ts';
+import {
+  DESKTOP_HEAP_LIMIT,
+  NORMAL_TEMP_QUOTA,
+  PRIVATE_TEMP_QUOTA,
+  buildGlobals,
+} from './helpers.ts';
 
-describe('detectIncognito — storage-quota strategy', () => {
-  it('returns isPrivate=true for Chromium with small quota', async () => {
+describe('detectIncognito — Chromium quota strategy', () => {
+  it('classifies an incognito tab (memory-bound quota) as private', async () => {
     const result = await detectIncognito({
-      globals: buildGlobals('chromium', { quota: PRIVATE_QUOTA }),
+      globals: buildGlobals('chromium', { tempQuota: PRIVATE_TEMP_QUOTA }),
     });
     expect(result).toMatchObject({
       isPrivate: true,
       browser: 'chromium',
       confidence: 'high',
-      strategy: 'storage-quota',
-      quota: PRIVATE_QUOTA,
+      strategy: 'chromium-quota',
+      quota: PRIVATE_TEMP_QUOTA,
     });
   });
 
-  it('returns isPrivate=true for modern-Chromium incognito quota (~800 MiB)', async () => {
-    // Chrome 110+ raised the incognito ceiling; on a desktop a private tab
-    // commonly reports quota in the 500 MiB–1 GiB band. This regression test
-    // pins our threshold to the band where modern Chromium incognito lives.
-    const modernIncognitoQuota = 800 * 1024 * 1024;
+  it('classifies a normal tab (disk-bound quota) as not private', async () => {
     const result = await detectIncognito({
-      globals: buildGlobals('chromium', { quota: modernIncognitoQuota }),
-    });
-    expect(result).toMatchObject({
-      isPrivate: true,
-      browser: 'chromium',
-      confidence: 'high',
-      strategy: 'storage-quota',
-      quota: modernIncognitoQuota,
-    });
-  });
-
-  it('returns isPrivate=false for Chromium with normal quota', async () => {
-    const result = await detectIncognito({
-      globals: buildGlobals('chromium', { quota: NORMAL_QUOTA }),
+      globals: buildGlobals('chromium', { tempQuota: NORMAL_TEMP_QUOTA }),
     });
     expect(result).toMatchObject({
       isPrivate: false,
       browser: 'chromium',
       confidence: 'high',
-      strategy: 'storage-quota',
+      strategy: 'chromium-quota',
+      quota: NORMAL_TEMP_QUOTA,
     });
   });
 
-  it('honors a custom threshold', async () => {
-    const customLow = 1024 * 1024 * 50; // 50 MiB
+  it('detects a large incognito quota that exceeds a fixed 1 GiB cutoff', async () => {
+    // Modern Chrome incognito can report well over 1 GiB. The heap-relative
+    // test still catches it because quota stays below 2× the JS heap limit.
+    const bigIncognitoQuota = 3 * 1024 * 1024 * 1024; // 3 GiB
     const result = await detectIncognito({
-      globals: buildGlobals('chromium', { quota: 80 * 1024 * 1024 }),
-      privateQuotaThresholdBytes: customLow,
+      globals: buildGlobals('chromium', {
+        tempQuota: bigIncognitoQuota,
+        heapLimit: DESKTOP_HEAP_LIMIT, // 4 GiB → threshold 8 GiB
+      }),
+    });
+    expect(result.isPrivate).toBe(true);
+    expect(result.strategy).toBe('chromium-quota');
+  });
+
+  it('falls back to a 1 GiB heap limit when performance.memory is absent', async () => {
+    // Without performance.memory the threshold is 1 GiB × 2 = 2 GiB.
+    const result = await detectIncognito({
+      globals: buildGlobals('chromium', {
+        tempQuota: 1.5 * 1024 * 1024 * 1024, // 1.5 GiB < 2 GiB
+        heapLimit: 'missing',
+      }),
+    });
+    expect(result.isPrivate).toBe(true);
+  });
+
+  it('honors an explicit privateQuotaThresholdBytes override', async () => {
+    const result = await detectIncognito({
+      globals: buildGlobals('chromium', { tempQuota: 80 * 1024 * 1024 }),
+      privateQuotaThresholdBytes: 50 * 1024 * 1024,
     });
     expect(result.isPrivate).toBe(false);
   });
 
-  it('reports quota field even when classified as normal', async () => {
-    const result = await detectIncognito({
-      globals: buildGlobals('firefox', { quota: NORMAL_QUOTA }),
-    });
-    expect(result.quota).toBe(NORMAL_QUOTA);
+  it('throws PROBE_FAILED when the quota query itself errors', async () => {
+    await expect(
+      detectIncognito({
+        globals: buildGlobals('chromium', { tempQuota: 'error' }),
+      }),
+    ).rejects.toMatchObject({ code: 'PROBE_FAILED' });
   });
 
-  it('reports browser=safari for a Safari UA', async () => {
-    const result = await detectIncognito({
-      globals: buildGlobals('safari', { quota: PRIVATE_QUOTA }),
-    });
-    expect(result.browser).toBe('safari');
+  it('throws PROBE_FAILED when webkitTemporaryStorage is unavailable', async () => {
+    await expect(
+      detectIncognito({ globals: buildGlobals('chromium') }),
+    ).rejects.toMatchObject({ code: 'PROBE_FAILED' });
   });
 });
 
-describe('detectIncognito — fallback strategies', () => {
-  it('safari fallback: localStorage throws → private', async () => {
+describe('detectIncognito — OPFS probe (Firefox / Safari)', () => {
+  it('Firefox: getDirectory rejects with a security error → private', async () => {
     const result = await detectIncognito({
-      globals: buildGlobals('safari', {
-        storage: 'missing',
-        localStorage: 'throws',
-      }),
+      globals: buildGlobals('firefox', { opfs: 'private' }),
+    });
+    expect(result).toMatchObject({
+      isPrivate: true,
+      browser: 'firefox',
+      confidence: 'high',
+      strategy: 'opfs-probe',
+    });
+  });
+
+  it('Firefox: getDirectory resolves → not private', async () => {
+    const result = await detectIncognito({
+      globals: buildGlobals('firefox', { opfs: 'normal' }),
+    });
+    expect(result).toMatchObject({
+      isPrivate: false,
+      browser: 'firefox',
+      strategy: 'opfs-probe',
+    });
+  });
+
+  it('Safari: getDirectory rejects "unknown transient reason" → private', async () => {
+    const result = await detectIncognito({
+      globals: buildGlobals('safari', { opfs: 'private' }),
+    });
+    expect(result).toMatchObject({
+      isPrivate: true,
+      browser: 'safari',
+      confidence: 'high',
+      strategy: 'opfs-probe',
+    });
+  });
+
+  it('Safari: getDirectory resolves → not private', async () => {
+    const result = await detectIncognito({
+      globals: buildGlobals('safari', { opfs: 'normal' }),
+    });
+    expect(result.isPrivate).toBe(false);
+    expect(result.strategy).toBe('opfs-probe');
+  });
+
+  it('an unrelated rejection is not treated as private', async () => {
+    const result = await detectIncognito({
+      globals: buildGlobals('firefox', { opfs: 'other-error' }),
+    });
+    expect(result.isPrivate).toBe(false);
+  });
+});
+
+describe('detectIncognito — legacy fallbacks', () => {
+  it('Safari without OPFS: localStorage throws → private', async () => {
+    const result = await detectIncognito({
+      globals: buildGlobals('safari', { localStorage: 'throws' }),
     });
     expect(result).toMatchObject({
       isPrivate: true,
@@ -87,10 +149,9 @@ describe('detectIncognito — fallback strategies', () => {
     });
   });
 
-  it('safari fallback: openDatabase throws → private', async () => {
+  it('Safari without OPFS: openDatabase throws → private', async () => {
     const result = await detectIncognito({
       globals: buildGlobals('safari', {
-        storage: 'missing',
         localStorage: 'works',
         openDatabase: 'throws',
       }),
@@ -99,10 +160,9 @@ describe('detectIncognito — fallback strategies', () => {
     expect(result.strategy).toBe('safari-storage');
   });
 
-  it('safari fallback: both ok → not private', async () => {
+  it('Safari without OPFS: both storage probes ok → not private', async () => {
     const result = await detectIncognito({
       globals: buildGlobals('safari', {
-        storage: 'missing',
         localStorage: 'works',
         openDatabase: 'works',
       }),
@@ -110,23 +170,17 @@ describe('detectIncognito — fallback strategies', () => {
     expect(result.isPrivate).toBe(false);
   });
 
-  it('safari fallback: no localStorage at all → private (low confidence)', async () => {
+  it('Safari without OPFS: no localStorage → private (low confidence)', async () => {
     const result = await detectIncognito({
-      globals: buildGlobals('safari', {
-        storage: 'missing',
-        localStorage: 'missing',
-      }),
+      globals: buildGlobals('safari', { localStorage: 'missing' }),
     });
     expect(result.isPrivate).toBe(true);
     expect(result.confidence).toBe('low');
   });
 
-  it('firefox fallback: indexedDB.open errors → private', async () => {
+  it('Firefox without OPFS: indexedDB.open errors → private', async () => {
     const result = await detectIncognito({
-      globals: buildGlobals('firefox', {
-        storage: 'missing',
-        indexedDB: 'throws',
-      }),
+      globals: buildGlobals('firefox', { indexedDB: 'throws' }),
     });
     expect(result).toMatchObject({
       isPrivate: true,
@@ -135,60 +189,26 @@ describe('detectIncognito — fallback strategies', () => {
     });
   });
 
-  it('firefox fallback: indexedDB.open succeeds → not private', async () => {
+  it('Firefox without OPFS: indexedDB.open succeeds → not private', async () => {
     const result = await detectIncognito({
-      globals: buildGlobals('firefox', {
-        storage: 'missing',
-        indexedDB: 'works',
-      }),
+      globals: buildGlobals('firefox', { indexedDB: 'works' }),
     });
     expect(result.isPrivate).toBe(false);
     expect(result.strategy).toBe('firefox-indexeddb');
   });
 
-  it('firefox fallback: indexedDB missing → private', async () => {
+  it('Firefox without OPFS: indexedDB missing → private', async () => {
     const result = await detectIncognito({
-      globals: buildGlobals('firefox', {
-        storage: 'missing',
-        indexedDB: 'missing',
-      }),
+      globals: buildGlobals('firefox', { indexedDB: 'missing' }),
     });
     expect(result.isPrivate).toBe(true);
   });
 
-  it('legacy edge: no indexedDB + PointerEvent → private', async () => {
-    const result = await detectIncognito({
-      globals: buildGlobals('edgeLegacy', {
-        storage: 'missing',
-        indexedDB: 'missing',
-        hasPointerEvent: true,
-      }),
-    });
-    expect(result).toMatchObject({
-      isPrivate: true,
-      browser: 'edge-legacy',
-      strategy: 'legacy-edge',
-    });
-  });
-
-  it('legacy edge: indexedDB present → not private', async () => {
-    const result = await detectIncognito({
-      globals: buildGlobals('edgeLegacy', {
-        storage: 'missing',
-        indexedDB: 'works',
-        hasPointerEvent: true,
-      }),
-    });
-    expect(result.isPrivate).toBe(false);
-  });
-
-  it('firefox: indexedDB.open() itself throws synchronously → private', async () => {
+  it('Firefox: indexedDB.open() throws synchronously → private', async () => {
     await expect(
       detectIncognito({
         globals: {
-          navigator: {
-            userAgent: 'Mozilla/5.0 Firefox/133.0',
-          },
+          navigator: { userAgent: 'Mozilla/5.0 Firefox/133.0' },
           window: {},
           indexedDB: {
             open: () => {
@@ -203,14 +223,34 @@ describe('detectIncognito — fallback strategies', () => {
     });
   });
 
-  it('legacy edge: no window at all → unsupported', async () => {
+  it('legacy Edge: no indexedDB + PointerEvent → private', async () => {
+    const result = await detectIncognito({
+      globals: buildGlobals('edgeLegacy', {
+        indexedDB: 'missing',
+        hasPointerEvent: true,
+      }),
+    });
+    expect(result).toMatchObject({
+      isPrivate: true,
+      browser: 'edge-legacy',
+      strategy: 'legacy-edge',
+    });
+  });
+
+  it('legacy Edge: indexedDB present → not private', async () => {
+    const result = await detectIncognito({
+      globals: buildGlobals('edgeLegacy', {
+        indexedDB: 'works',
+        hasPointerEvent: true,
+      }),
+    });
+    expect(result.isPrivate).toBe(false);
+  });
+
+  it('legacy Edge: no window at all → PROBE_FAILED', async () => {
     await expect(
       detectIncognito({
-        globals: {
-          navigator: {
-            userAgent: 'Mozilla/5.0 MSIE 11.0',
-          },
-        },
+        globals: { navigator: { userAgent: 'Mozilla/5.0 MSIE 11.0' } },
       }),
     ).rejects.toMatchObject({ code: 'PROBE_FAILED' });
   });
@@ -226,7 +266,7 @@ describe('detectIncognito — errors', () => {
     ).rejects.toMatchObject({ code: 'NOT_A_BROWSER' });
   });
 
-  it('throws UNSUPPORTED_BROWSER for unknown UA without storage', async () => {
+  it('throws UNSUPPORTED_BROWSER for an unrecognized UA', async () => {
     await expect(
       detectIncognito({
         globals: {
@@ -236,42 +276,19 @@ describe('detectIncognito — errors', () => {
       }),
     ).rejects.toMatchObject({ code: 'UNSUPPORTED_BROWSER' });
   });
-
-  it('throws PROBE_FAILED when storage.estimate rejects and no fallback applies', async () => {
-    await expect(
-      detectIncognito({
-        globals: {
-          navigator: {
-            userAgent: 'Mozilla/5.0 Chrome/131.0',
-            storage: {
-              estimate: () => Promise.reject(new Error('boom')),
-            },
-          },
-        },
-      }),
-    ).rejects.toMatchObject({ code: 'PROBE_FAILED' });
-  });
-
-  it('throws PROBE_FAILED when estimate() returns no quota and no fallback', async () => {
-    await expect(
-      detectIncognito({
-        globals: buildGlobals('chromium', { quota: undefined }),
-      }),
-    ).rejects.toMatchObject({ code: 'PROBE_FAILED' });
-  });
 });
 
 describe('isIncognito', () => {
   it('returns just the boolean', async () => {
     const value = await isIncognito({
-      globals: buildGlobals('chromium', { quota: PRIVATE_QUOTA }),
+      globals: buildGlobals('chromium', { tempQuota: PRIVATE_TEMP_QUOTA }),
     });
     expect(value).toBe(true);
   });
 
   it('forwards options', async () => {
     const value = await isIncognito({
-      globals: buildGlobals('chromium', { quota: 80 * 1024 * 1024 }),
+      globals: buildGlobals('chromium', { tempQuota: 80 * 1024 * 1024 }),
       privateQuotaThresholdBytes: 50 * 1024 * 1024,
     });
     expect(value).toBe(false);

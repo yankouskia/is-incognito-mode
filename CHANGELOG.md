@@ -1,5 +1,47 @@
 # Changelog
 
+## 2.1.0
+
+### Minor Changes
+
+- Robust per-engine detection — fixes Chrome incognito false negatives for good.
+
+  **The problem.** Chrome now deliberately fakes `navigator.storage.estimate().quota`
+  at `usage + 10 GiB` in _every_ mode, specifically to defeat incognito detection.
+  Any threshold on that value — 120 MiB, 1 GiB, anything — is therefore unreliable
+  on modern Chrome.
+
+  **The fix.** Detection is now per-engine, using the signal that actually still
+  leaks for each:
+  - **Chromium** — reads the legacy `navigator.webkitTemporaryStorage` quota
+    (which is _not_ faked) and compares it to `performance.memory.jsHeapSizeLimit`.
+    An incognito quota is memory-bound and stays below ~2× the heap limit; a
+    normal quota is disk-bound and far above it. The test is device-relative, so
+    there is no brittle fixed byte count.
+  - **Firefox & Safari** — probes the Origin Private File System via
+    `navigator.storage.getDirectory()`, which is rejected in private mode
+    (Firefox: a security error; Safari: "unknown transient reason").
+  - **Legacy Edge / IE** — unchanged `PointerEvent` + `indexedDB` heuristic.
+  - Legacy `localStorage` / `indexedDB.open` probes are retained as fallbacks for
+    older Safari and Firefox without OPFS.
+
+  **API changes (all backward compatible at runtime):**
+  - `isIncognito()`, `detectIncognito()`, `DetectionResult`, and
+    `IncognitoDetectionError` are unchanged.
+  - `DetectionResult.strategy` values changed: new `chromium-quota` and
+    `opfs-probe`; `storage-quota` removed. The `strategy` field is informational
+    (debugging / analytics); switch on it accordingly.
+  - New exported types: `PerformanceLike`, `DeprecatedStorageQuota`.
+  - `NavigatorLike` / `WindowLike` / `StorageManagerLike` gained optional fields
+    (`webkitTemporaryStorage`, `performance`, `getDirectory`).
+  - `DEFAULT_PRIVATE_QUOTA_BYTES` (1 GiB) is retained as the fallback heap limit
+    used when `performance.memory` is unavailable.
+  - `privateQuotaThresholdBytes`, when set, still forces an absolute byte cutoff
+    for the Chromium strategy.
+
+  Reference: this mirrors the techniques in the actively-maintained
+  `detectIncognito` library (v1.6.2).
+
 ## 2.0.2
 
 ### Patch Changes

@@ -1,14 +1,18 @@
 import type {
+  DeprecatedStorageQuota,
   DetectionGlobals,
   NavigatorLike,
+  PerformanceLike,
   StorageManagerLike,
   WindowLike,
 } from '../src/types.ts';
 
-/** Reasonable disk quota for a desktop in normal mode: 100 GiB. */
-export const NORMAL_QUOTA = 100 * 1024 * 1024 * 1024;
-/** Restricted-storage quota typical of Chromium incognito: 32 MiB. */
-export const PRIVATE_QUOTA = 32 * 1024 * 1024;
+/** Disk-bound temporary-storage quota for a normal Chromium tab: 200 GiB. */
+export const NORMAL_TEMP_QUOTA = 200 * 1024 * 1024 * 1024;
+/** Memory-bound temporary-storage quota for a Chromium incognito tab: 600 MiB. */
+export const PRIVATE_TEMP_QUOTA = 600 * 1024 * 1024;
+/** Typical desktop `performance.memory.jsHeapSizeLimit`: 4 GiB. */
+export const DESKTOP_HEAP_LIMIT = 4 * 1024 * 1024 * 1024;
 
 const USER_AGENTS = {
   chromium:
@@ -25,9 +29,20 @@ const USER_AGENTS = {
   unknown: '',
 };
 
+/** The OPFS rejection message each engine produces in private mode. */
+const OPFS_PRIVATE_MESSAGE: Record<string, string> = {
+  firefox: 'NotAllowedError: Security error when calling getDirectory',
+  safari: 'UnknownError: unknown transient reason',
+  webkit: 'UnknownError: unknown transient reason',
+};
+
 interface BuildOptions {
-  quota?: number | undefined;
-  storage?: 'present' | 'missing';
+  /** Chromium `webkitTemporaryStorage` quota in bytes, or `'error'`. Omit to leave the API absent. */
+  tempQuota?: number | 'error';
+  /** Chromium `performance.memory.jsHeapSizeLimit`. Defaults to a 4 GiB desktop. `'missing'` drops it. */
+  heapLimit?: number | 'missing';
+  /** Firefox / Safari OPFS behaviour. Omit to leave `navigator.storage.getDirectory` absent. */
+  opfs?: 'normal' | 'private' | 'other-error';
   localStorage?: 'works' | 'throws' | 'missing';
   openDatabase?: 'works' | 'throws' | 'missing';
   indexedDB?: 'works' | 'throws' | 'missing';
@@ -44,7 +59,12 @@ export function buildGlobals(
     vendor:
       opts.vendor ??
       (browser === 'safari' ? 'Apple Computer, Inc.' : 'Google Inc.'),
-    ...(opts.storage === 'missing' ? {} : { storage: makeStorage(opts.quota) }),
+    ...(opts.opfs === undefined
+      ? {}
+      : { storage: makeStorageManager(browser, opts.opfs) }),
+    ...(opts.tempQuota === undefined
+      ? {}
+      : { webkitTemporaryStorage: makeTempStorage(opts.tempQuota) }),
   };
 
   const idb = makeIndexedDB(opts.indexedDB ?? 'missing');
@@ -57,6 +77,9 @@ export function buildGlobals(
       ? {}
       : { openDatabase: makeOpenDatabase(opts.openDatabase ?? 'works') }),
     ...(opts.hasPointerEvent ? { PointerEvent: function PE() {} } : {}),
+    ...(opts.heapLimit === 'missing'
+      ? {}
+      : { performance: makePerformance(opts.heapLimit ?? DESKTOP_HEAP_LIMIT) }),
   };
 
   return {
@@ -66,11 +89,37 @@ export function buildGlobals(
   };
 }
 
-function makeStorage(quota: number | undefined): StorageManagerLike {
+function makeStorageManager(
+  browser: keyof typeof USER_AGENTS,
+  opfs: 'normal' | 'private' | 'other-error',
+): StorageManagerLike {
   return {
-    estimate: () =>
-      Promise.resolve(quota === undefined ? {} : { quota, usage: 0 }),
+    getDirectory: () => {
+      if (opfs === 'normal') return Promise.resolve({});
+      if (opfs === 'other-error') {
+        return Promise.reject(new Error('AbortError: unrelated failure'));
+      }
+      return Promise.reject(
+        new Error(OPFS_PRIVATE_MESSAGE[browser] ?? 'unknown transient reason'),
+      );
+    },
   };
+}
+
+function makeTempStorage(quota: number | 'error'): DeprecatedStorageQuota {
+  return {
+    queryUsageAndQuota: (onSuccess, onError) => {
+      if (quota === 'error') {
+        onError?.(new Error('quota query failed'));
+      } else {
+        onSuccess(0, quota);
+      }
+    },
+  };
+}
+
+function makePerformance(heapLimit: number): PerformanceLike {
+  return { memory: { jsHeapSizeLimit: heapLimit } };
 }
 
 function makeLocalStorage(mode: 'works' | 'throws') {

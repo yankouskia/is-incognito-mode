@@ -54,9 +54,9 @@ a typed object with `browser`, `confidence`, `quota`, and `strategy` fields.
 
 Browsers don't expose a "private mode" API on purpose — but private windows
 still leak the fact through **resource limits** and **storage shape**.
-`is-incognito-mode` packages the current state-of-the-art detection (quota
-probing via `navigator.storage.estimate()`) as a tiny, typed, zero-dep module,
-so you can stop hand-rolling heuristics that browsers patched out in 2019.
+`is-incognito-mode` packages the current state-of-the-art per-engine detection
+as a tiny, typed, zero-dep module, so you can stop hand-rolling heuristics that
+browsers patched out years ago.
 
 A few real-world fits:
 
@@ -104,37 +104,51 @@ static file, no build step).
 
 ## How it decides (under the hood)
 
-The library tries the cleanest signal first and falls back to engine-specific
-probes for older browsers. Click to expand:
+There is no single cross-browser signal — each engine leaks private mode in a
+different place — so the library picks the right probe per engine.
 
 <details>
 <summary>Detection flow diagram</summary>
 
 ```mermaid
 flowchart TD
-    A[detectIncognito] --> B{navigator.storage<br/>.estimate available?}
-    B -- yes --> C{quota &lt; 1 GiB?}
-    C -- yes --> R1([private — high confidence])
-    C -- no --> R2([normal — high confidence])
-    B -- no --> D{which browser?}
-    D -- Safari/WebKit --> E[localStorage probe<br/>+ openDatabase probe]
-    D -- Firefox --> F[indexedDB.open error path]
-    D -- Edge legacy / IE --> G[PointerEvent + window.indexedDB heuristic]
+    A[detectIncognito] --> D{which engine?}
+    D -- Chromium --> C1[webkitTemporaryStorage quota]
+    C1 --> C2{quota &lt; 2 × jsHeapSizeLimit?}
+    C2 -- yes --> R1([private — high confidence])
+    C2 -- no --> R2([normal — high confidence])
+    D -- Firefox --> F1["navigator.storage.getDirectory() — OPFS"]
+    F1 --> F2{rejected with a security error?}
+    F2 -- yes --> R3([private — high confidence])
+    F2 -- no --> R4([normal — high confidence])
+    D -- Safari/WebKit --> S1["navigator.storage.getDirectory() — OPFS"]
+    S1 --> S2{rejected 'unknown transient reason'?}
+    S2 -- yes --> R5([private])
+    S2 -- no --> R6([normal])
+    D -- Edge legacy / IE --> G[PointerEvent + indexedDB heuristic]
     D -- unknown --> X([throw UNSUPPORTED_BROWSER])
-    E --> R3([private/normal — medium])
-    F --> R4([private/normal — low])
-    G --> R5([private/normal — low])
 ```
 
 </details>
 
-The default threshold is **1 GiB**. Modern Chromium incognito tabs report
-quota in the **500 MiB–1 GiB** range (the cap was ~120 MiB pre-2022 but Chrome
-raised it in 110+), and Firefox / Safari private modes are well below that.
-Normal-mode quotas on a desktop are typically tens-to-hundreds of GiB, so the
-margin is comfortable. Small-disk devices (low-end mobile, restricted ChromeOS
-profiles) may produce false positives — override with
-`privateQuotaThresholdBytes` if that matters to you.
+**Chromium (Chrome, Edge, Brave, Opera, …).** Chrome deliberately fakes
+`navigator.storage.estimate().quota` at `usage + 10 GiB` in _every_ mode
+specifically to defeat detection — so that API is useless. The library instead
+reads the **legacy `navigator.webkitTemporaryStorage`** quota, which still
+reports the real per-origin limit: disk-bound (huge) in a normal tab,
+memory-bound (small) in incognito. It compares that to
+`performance.memory.jsHeapSizeLimit` — a per-renderer constant — so the test
+adapts to the device instead of relying on a brittle fixed byte count.
+
+**Firefox & Safari.** The **Origin Private File System**
+(`navigator.storage.getDirectory()`) is rejected in private mode — Firefox
+throws a security error, Safari throws "unknown transient reason". A clean
+resolve means a normal window.
+
+**Legacy Edge / IE.** No `indexedDB` while `PointerEvent` exists → private.
+
+If you need to override the Chromium heuristic with an absolute byte cutoff,
+pass `privateQuotaThresholdBytes` (see [Tuning](#tuning-the-detection)).
 
 ---
 
@@ -159,7 +173,7 @@ const { isPrivate, browser, confidence, quota, strategy } =
 console.log(
   `${browser} (${confidence}) — strategy: ${strategy}, quota: ${quota}`,
 );
-// → "chromium (high) — strategy: storage-quota, quota: 33554432"
+// → "chromium (high) — strategy: chromium-quota, quota: 629145600"
 ```
 
 Fields on `DetectionResult`:
@@ -168,27 +182,29 @@ Fields on `DetectionResult`:
 | ------------ | ----------------------------- | ----------------------------------------------------------------------------------------- |
 | `isPrivate`  | `boolean`                     | Final verdict.                                                                            |
 | `browser`    | `BrowserName`                 | Coarse engine: `chromium`, `firefox`, `safari`, `webkit`, `edge-legacy`, `ie`, `unknown`. |
-| `confidence` | `'high' \| 'medium' \| 'low'` | `high` for direct quota signal; `low` for legacy heuristics.                              |
-| `quota`      | `number \| null`              | Total storage quota in bytes, when `storage.estimate()` was available.                    |
-| `strategy`   | `DetectionStrategyName`       | Which probe produced the verdict.                                                         |
+| `confidence` | `'high' \| 'medium' \| 'low'` | `high` for the primary per-engine probe; `low` for legacy heuristics.                     |
+| `quota`      | `number \| null`              | Temporary-storage quota in bytes (Chromium); `null` for the OPFS and legacy strategies.   |
+| `strategy`   | `DetectionStrategyName`       | Which probe produced the verdict — see [How it decides](#how-it-decides-under-the-hood).  |
 
-### Tuning the quota threshold
+### Tuning the detection
+
+The Chromium strategy is **self-calibrating by default** — it compares the
+temporary-storage quota to the device's JS heap limit, so you normally do not
+need to configure anything. For an absolute byte cutoff instead, pass
+`privateQuotaThresholdBytes`:
 
 ```ts
-import {
-  detectIncognito,
-  DEFAULT_PRIVATE_QUOTA_BYTES,
-} from 'is-incognito-mode';
+import { detectIncognito } from 'is-incognito-mode';
 
+// Classify a Chromium tab as private if its temporary-storage quota is
+// below 2 GiB, instead of the default heap-relative heuristic.
 const result = await detectIncognito({
-  privateQuotaThresholdBytes: DEFAULT_PRIVATE_QUOTA_BYTES * 2,
+  privateQuotaThresholdBytes: 2 * 1024 * 1024 * 1024,
 });
 ```
 
-Default is **1 GiB** (matches the band where current Chrome / Firefox /
-Safari incognito sessions report quota). Lower it if you trust a tighter
-threshold for your audience, or raise it on devices with very little physical
-storage where normal mode itself may report less than 1 GiB.
+`DEFAULT_PRIVATE_QUOTA_BYTES` (1 GiB) is exported as a reference value — it is
+the fallback heap limit used when `performance.memory` is unavailable.
 
 ### Injecting globals (for testing)
 
@@ -202,14 +218,19 @@ const result = await detectIncognito({
   globals: {
     navigator: {
       userAgent: 'Mozilla/5.0 ... Chrome/131.0',
-      storage: {
-        estimate: () => Promise.resolve({ quota: 32 * 1024 * 1024 }),
+      // Legacy quota API: a small, memory-bound quota — i.e. an incognito tab.
+      webkitTemporaryStorage: {
+        queryUsageAndQuota: (onSuccess) => {
+          onSuccess(0, 600 * 1024 * 1024); // 600 MiB granted
+        },
       },
     },
-    window: {},
+    window: {
+      performance: { memory: { jsHeapSizeLimit: 4 * 1024 * 1024 * 1024 } },
+    },
   },
 });
-// result.isPrivate === true
+// result.isPrivate === true  (600 MiB < 2 × 4 GiB)
 ```
 
 ### Error handling
@@ -230,7 +251,7 @@ try {
         // Probably a bot / curl / node-fetch
         break;
       case 'PROBE_FAILED':
-        // Storage API rejected, no fallback applied
+        // The engine's probe could not produce a verdict
         break;
     }
   }
@@ -270,16 +291,16 @@ Full generated reference: **<https://yankouskia.github.io/is-incognito-mode/>**
 
 ### Browsers
 
-| Engine                 | Detection strategy              | Confidence |
-| ---------------------- | ------------------------------- | ---------- |
-| Chromium ≥ 80          | `navigator.storage.estimate`    | high       |
-| Firefox ≥ 75           | `navigator.storage.estimate`    | high       |
-| Safari ≥ 13            | `navigator.storage.estimate`    | high       |
-| Older Safari / WebKit  | `localStorage` + `openDatabase` | medium-low |
-| Older Firefox          | `indexedDB.open` error path     | low        |
-| Edge (legacy)          | `PointerEvent` heuristic        | low        |
-| IE 10–11               | `PointerEvent` heuristic        | low        |
-| All others (`unknown`) | throws `UNSUPPORTED_BROWSER`    | —          |
+| Engine                 | Detection strategy                           | Confidence |
+| ---------------------- | -------------------------------------------- | ---------- |
+| Chromium ≥ 76          | `webkitTemporaryStorage` quota vs heap limit | high       |
+| Firefox ≥ 111          | OPFS `navigator.storage.getDirectory()`      | high       |
+| Safari ≥ 15.2          | OPFS `navigator.storage.getDirectory()`      | high       |
+| Older Safari / WebKit  | `localStorage` + `openDatabase` probes       | medium-low |
+| Older Firefox          | `indexedDB.open` error path                  | low        |
+| Edge (legacy)          | `PointerEvent` + `indexedDB` heuristic       | low        |
+| IE 10–11               | `PointerEvent` + `indexedDB` heuristic       | low        |
+| All others (`unknown`) | throws `UNSUPPORTED_BROWSER`                 | —          |
 
 ### Node / runtimes
 
@@ -297,15 +318,15 @@ Rollup, esbuild, Bun, and Deno.
 
 ## What's new in v2
 
-|                     | v1.x                                                     | v2.0                                                         |
-| ------------------- | -------------------------------------------------------- | ------------------------------------------------------------ |
-| Detection technique | FileSystem API + IndexedDB + localStorage + PointerEvent | `navigator.storage.estimate()` quota (with legacy fallbacks) |
-| TypeScript          | shipped JS only                                          | strict TypeScript source, full `.d.ts`                       |
-| Module formats      | UMD + CJS                                                | ESM + CJS dual publish                                       |
-| Dependencies        | `get-browser`                                            | **zero**                                                     |
-| Bundle size         | ~3 kB min+gzip                                           | **~1 kB min+gzip**                                           |
-| Engines             | Node ≥ 8                                                 | Node ≥ 20                                                    |
-| Error model         | `throw 'string'`                                         | `IncognitoDetectionError` with `code`                        |
+|                     | v1.x                                                     | v2.0                                                                |
+| ------------------- | -------------------------------------------------------- | ------------------------------------------------------------------- |
+| Detection technique | FileSystem API + IndexedDB + localStorage + PointerEvent | per-engine probes: Chromium temp-storage quota, Firefox/Safari OPFS |
+| TypeScript          | shipped JS only                                          | strict TypeScript source, full `.d.ts`                              |
+| Module formats      | UMD + CJS                                                | ESM + CJS dual publish                                              |
+| Dependencies        | `get-browser`                                            | **zero**                                                            |
+| Bundle size         | ~3 kB min+gzip                                           | **~1 kB min+gzip**                                                  |
+| Engines             | Node ≥ 8                                                 | Node ≥ 20                                                           |
+| Error model         | `throw 'string'`                                         | `IncognitoDetectionError` with `code`                               |
 
 See [`BREAKING_CHANGES.md`](./BREAKING_CHANGES.md) for migration recipes
 and [`DECISIONS.md`](./DECISIONS.md) for the reasoning behind each big call.

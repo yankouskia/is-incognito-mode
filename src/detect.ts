@@ -1,10 +1,11 @@
 import { detectBrowser } from './browser.ts';
 import { IncognitoDetectionError } from './errors.ts';
-import { DEFAULT_PRIVATE_QUOTA_BYTES, runStrategies } from './strategies.ts';
+import { runStrategies } from './strategies.ts';
 import type {
   DetectIncognitoOptions,
   DetectionGlobals,
   DetectionResult,
+  WindowLike,
 } from './types.ts';
 
 /**
@@ -46,12 +47,13 @@ export async function detectIncognito(
       : { vendor: globals.navigator.vendor }),
   });
 
-  const threshold =
-    options.privateQuotaThresholdBytes ?? DEFAULT_PRIVATE_QUOTA_BYTES;
-
-  return runStrategies(browser, globals, {
-    privateQuotaThresholdBytes: threshold,
-  });
+  return runStrategies(
+    browser,
+    globals,
+    options.privateQuotaThresholdBytes === undefined
+      ? {}
+      : { privateQuotaThresholdBytes: options.privateQuotaThresholdBytes },
+  );
 }
 
 /**
@@ -80,9 +82,15 @@ function resolveGlobals(
   overrides: DetectionGlobals | undefined,
 ): DetectionGlobals {
   if (overrides) return overrides;
+  // Boundary cast on `window`: the live object carries non-standard properties
+  // the detector relies on (notably `performance.memory`) that the standard
+  // DOM lib types do not declare.
   return {
     navigator: typeof navigator === 'undefined' ? undefined : navigator,
-    window: typeof window === 'undefined' ? undefined : window,
+    window:
+      typeof window === 'undefined'
+        ? undefined
+        : (window as unknown as WindowLike),
     indexedDB: typeof indexedDB === 'undefined' ? undefined : indexedDB,
   };
 }
