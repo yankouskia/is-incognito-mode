@@ -16,14 +16,12 @@ export {
 } from './errors.ts';
 export { DEFAULT_PRIVATE_QUOTA_BYTES } from './strategies.ts';
 export type {
-  DeprecatedStorageQuota,
   DetectionConfidence,
   DetectionGlobals,
   DetectionResult,
   DetectionStrategyName,
   DetectIncognitoOptions,
   NavigatorLike,
-  PerformanceLike,
   StorageManagerLike,
   StorageLike,
   WindowLike,

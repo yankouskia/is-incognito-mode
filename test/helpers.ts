@@ -1,22 +1,20 @@
 import type {
-  DeprecatedStorageQuota,
   DetectionGlobals,
   NavigatorLike,
-  PerformanceLike,
   StorageManagerLike,
   WindowLike,
 } from '../src/types.ts';
 
-/** Disk-bound temporary-storage quota for a normal Chromium tab: 200 GiB. */
-export const NORMAL_TEMP_QUOTA = 200 * 1024 * 1024 * 1024;
-/** Memory-bound temporary-storage quota for a Chromium incognito tab: 600 MiB. */
-export const PRIVATE_TEMP_QUOTA = 600 * 1024 * 1024;
-/** Typical desktop `performance.memory.jsHeapSizeLimit`: 4 GiB. */
-export const DESKTOP_HEAP_LIMIT = 4 * 1024 * 1024 * 1024;
+const GiB = 1024 * 1024 * 1024;
+
+/** `quota - usage` Chrome 147+ reports for a normal tab: 10 GiB. */
+export const NORMAL_HEADROOM = 10 * GiB;
+/** `quota - usage` Chrome 147+ reports for an incognito tab: 9 GiB. */
+export const PRIVATE_HEADROOM = 9 * GiB;
 
 const USER_AGENTS = {
   chromium:
-    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36',
   firefox:
     'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:133.0) Gecko/20100101 Firefox/133.0',
   safari:
@@ -37,11 +35,13 @@ const OPFS_PRIVATE_MESSAGE: Record<string, string> = {
 };
 
 interface BuildOptions {
-  /** Chromium `webkitTemporaryStorage` quota in bytes, or `'error'`. Omit to leave the API absent. */
-  tempQuota?: number | 'error';
-  /** Chromium `performance.memory.jsHeapSizeLimit`. Defaults to a 4 GiB desktop. `'missing'` drops it. */
-  heapLimit?: number | 'missing';
-  /** Firefox / Safari OPFS behaviour. Omit to leave `navigator.storage.getDirectory` absent. */
+  /** Chromium `navigator.storage.estimate()` resolved value. */
+  estimate?: { quota?: number; usage?: number };
+  /** Make `navigator.storage.estimate()` reject. */
+  estimateRejects?: boolean;
+  /** Drop `navigator.storage` entirely. */
+  storage?: 'missing';
+  /** Firefox / Safari OPFS behaviour. Omit to leave `getDirectory` absent. */
   opfs?: 'normal' | 'private' | 'other-error';
   localStorage?: 'works' | 'throws' | 'missing';
   openDatabase?: 'works' | 'throws' | 'missing';
@@ -54,17 +54,14 @@ export function buildGlobals(
   browser: keyof typeof USER_AGENTS,
   opts: BuildOptions = {},
 ): DetectionGlobals {
+  const storageManager = makeStorageManager(browser, opts);
+
   const navigator: NavigatorLike = {
     userAgent: USER_AGENTS[browser],
     vendor:
       opts.vendor ??
       (browser === 'safari' ? 'Apple Computer, Inc.' : 'Google Inc.'),
-    ...(opts.opfs === undefined
-      ? {}
-      : { storage: makeStorageManager(browser, opts.opfs) }),
-    ...(opts.tempQuota === undefined
-      ? {}
-      : { webkitTemporaryStorage: makeTempStorage(opts.tempQuota) }),
+    ...(storageManager === undefined ? {} : { storage: storageManager }),
   };
 
   const idb = makeIndexedDB(opts.indexedDB ?? 'missing');
@@ -77,9 +74,6 @@ export function buildGlobals(
       ? {}
       : { openDatabase: makeOpenDatabase(opts.openDatabase ?? 'works') }),
     ...(opts.hasPointerEvent ? { PointerEvent: function PE() {} } : {}),
-    ...(opts.heapLimit === 'missing'
-      ? {}
-      : { performance: makePerformance(opts.heapLimit ?? DESKTOP_HEAP_LIMIT) }),
   };
 
   return {
@@ -91,35 +85,36 @@ export function buildGlobals(
 
 function makeStorageManager(
   browser: keyof typeof USER_AGENTS,
-  opfs: 'normal' | 'private' | 'other-error',
-): StorageManagerLike {
-  return {
-    getDirectory: () => {
-      if (opfs === 'normal') return Promise.resolve({});
-      if (opfs === 'other-error') {
+  opts: BuildOptions,
+): StorageManagerLike | undefined {
+  if (opts.storage === 'missing') return undefined;
+
+  const manager: StorageManagerLike = {};
+  let used = false;
+
+  if (opts.estimateRejects) {
+    manager.estimate = () => Promise.reject(new Error('estimate failed'));
+    used = true;
+  } else if (opts.estimate) {
+    const value = opts.estimate;
+    manager.estimate = () => Promise.resolve(value);
+    used = true;
+  }
+
+  if (opts.opfs !== undefined) {
+    manager.getDirectory = () => {
+      if (opts.opfs === 'normal') return Promise.resolve({});
+      if (opts.opfs === 'other-error') {
         return Promise.reject(new Error('AbortError: unrelated failure'));
       }
       return Promise.reject(
         new Error(OPFS_PRIVATE_MESSAGE[browser] ?? 'unknown transient reason'),
       );
-    },
-  };
-}
+    };
+    used = true;
+  }
 
-function makeTempStorage(quota: number | 'error'): DeprecatedStorageQuota {
-  return {
-    queryUsageAndQuota: (onSuccess, onError) => {
-      if (quota === 'error') {
-        onError?.(new Error('quota query failed'));
-      } else {
-        onSuccess(0, quota);
-      }
-    },
-  };
-}
-
-function makePerformance(heapLimit: number): PerformanceLike {
-  return { memory: { jsHeapSizeLimit: heapLimit } };
+  return used ? manager : undefined;
 }
 
 function makeLocalStorage(mode: 'works' | 'throws') {

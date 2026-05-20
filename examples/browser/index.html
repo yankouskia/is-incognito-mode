@@ -550,42 +550,28 @@
             navigator.storage && navigator.storage.estimate
               ? await navigator.storage.estimate()
               : null;
-          out['navigator.storage.estimate().quota'] = est
-            ? `${est.quota} (${formatBytes(est.quota)}) — faked by Chrome, not used`
-            : 'unavailable';
+          if (est) {
+            const headroom = est.quota - (est.usage || 0);
+            out['estimate().quota'] =
+              `${est.quota} (${formatBytes(est.quota)})`;
+            out['estimate().usage'] =
+              `${est.usage || 0} (${formatBytes(est.usage || 0)})`;
+            out['headroom (quota − usage)'] =
+              `${headroom} (${formatBytes(headroom)}) — the detection signal`;
+            out['verdict from headroom'] =
+              headroom < 9.5 * 1024 * 1024 * 1024
+                ? 'private (headroom < 9.5 GiB)'
+                : 'normal (headroom ≥ 9.5 GiB)';
+          } else {
+            out['navigator.storage.estimate'] = 'unavailable';
+          }
         } catch (e) {
           out['navigator.storage.estimate()'] = `threw: ${e}`;
         }
 
-        try {
-          const temp = navigator.webkitTemporaryStorage;
-          if (temp && temp.queryUsageAndQuota) {
-            const quota = await new Promise((resolve, reject) => {
-              temp.queryUsageAndQuota(
-                (_used, granted) => resolve(granted),
-                (err) => reject(err),
-              );
-            });
-            out['navigator.webkitTemporaryStorage quota'] =
-              `${quota} (${formatBytes(quota)}) — the real signal`;
-          } else {
-            out['navigator.webkitTemporaryStorage'] = 'unavailable';
-          }
-        } catch (e) {
-          out['navigator.webkitTemporaryStorage'] = `threw: ${e}`;
-        }
-
-        const heap =
-          window.performance &&
-          window.performance.memory &&
-          window.performance.memory.jsHeapSizeLimit;
-        out['performance.memory.jsHeapSizeLimit'] = heap
-          ? `${heap} (${formatBytes(heap)})`
-          : 'unavailable (1 GiB fallback used)';
-
         out['navigator.storage.getDirectory (OPFS)'] =
           navigator.storage && navigator.storage.getDirectory
-            ? 'available'
+            ? 'available (Firefox/Safari probe)'
             : 'unavailable';
 
         diagnostics.textContent = JSON.stringify(out, null, 2);

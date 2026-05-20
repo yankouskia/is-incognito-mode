@@ -3,8 +3,8 @@ import type { BrowserName } from './browser.ts';
 /**
  * Qualitative confidence in a detection outcome.
  *
- * - `high` — A direct, hard-to-fake signal (the Chromium temporary-storage
- *   quota probe, or an OPFS access rejection in Firefox / Safari private mode).
+ * - `high` — A direct signal: the Chromium storage-headroom probe, or an OPFS
+ *   access rejection in Firefox / Safari private mode.
  * - `medium` — A heuristic that is right the overwhelming majority of the
  *   time but has known false-positive scenarios.
  * - `low` — A best-effort fallback (legacy-browser heuristics).
@@ -22,9 +22,8 @@ export interface DetectionResult {
   /** Detector's qualitative confidence in `isPrivate`. */
   readonly confidence: DetectionConfidence;
   /**
-   * Storage quota in bytes that informed the verdict, when a quota-based
-   * strategy was used. `null` for strategies that do not read a quota
-   * (OPFS probe, legacy heuristics).
+   * Storage quota in bytes reported by `navigator.storage.estimate()` when the
+   * quota strategy ran. `null` for the OPFS and legacy strategies.
    */
   readonly quota: number | null;
   /** Identifier of the strategy that produced the verdict. */
@@ -35,11 +34,11 @@ export interface DetectionResult {
  * Stable identifiers for the detection strategies. Useful for debugging and
  * analytics.
  *
- * - `chromium-quota` — Chromium-family: the legacy
- *   `navigator.webkitTemporaryStorage.queryUsageAndQuota` quota compared to
- *   `performance.memory.jsHeapSizeLimit`. This is the only Chromium signal
- *   that still works: modern Chrome fakes `navigator.storage.estimate()` at
- *   `usage + 10 GiB` in every mode specifically to defeat detection.
+ * - `chromium-quota` — Chromium-family: the **headroom** of
+ *   `navigator.storage.estimate()`, i.e. `quota - usage`. Chrome's
+ *   `predictable-reported-quota` (default since Chromium 147) reports
+ *   `quota = usage + 10 GiB` in a normal tab but `usage + 9 GiB` in incognito —
+ *   a stable 1 GiB gap that survives the mitigation.
  * - `opfs-probe` — Firefox / Safari: `navigator.storage.getDirectory()`
  *   (Origin Private File System) is rejected in private mode.
  * - `firefox-indexeddb` — Older Firefox without OPFS: `indexedDB.open` error.
@@ -64,13 +63,13 @@ export interface DetectIncognitoOptions {
    */
   readonly globals?: DetectionGlobals;
   /**
-   * **Advanced override.** When set, the Chromium strategy classifies the tab
-   * as private if the legacy temporary-storage quota is below this many bytes,
-   * instead of the default heap-relative heuristic.
+   * **Advanced override.** The Chromium strategy classifies a tab as private
+   * when its storage *headroom* (`estimate().quota - estimate().usage`) is
+   * below this many bytes. Defaults to **9.5 GiB** — the midpoint between the
+   * 10 GiB headroom Chrome reports for a normal tab and the 9 GiB it reports
+   * for an incognito tab.
    *
-   * Leave this unset unless you have measured your audience: the default
-   * compares the quota to `performance.memory.jsHeapSizeLimit`, which adapts
-   * to the device automatically and is far more robust than any fixed number.
+   * Only change this if you have measured your audience.
    */
   readonly privateQuotaThresholdBytes?: number;
 }
@@ -89,29 +88,13 @@ export interface NavigatorLike {
   readonly userAgent: string;
   readonly vendor?: string;
   readonly storage?: StorageManagerLike | undefined;
-  /**
-   * Legacy, non-standard quota API. Still present in Chromium and — unlike the
-   * modern Storage API — still reports the *real* per-origin quota, which is
-   * what makes incognito detection possible.
-   */
-  readonly webkitTemporaryStorage?: DeprecatedStorageQuota | undefined;
 }
 
 export interface StorageManagerLike {
+  /** Standard Storage API estimate. Drives the Chromium headroom strategy. */
   estimate?(): Promise<{ quota?: number; usage?: number }>;
   /** Origin Private File System root. Rejected in Firefox / Safari private mode. */
   getDirectory?(): Promise<unknown>;
-}
-
-/**
- * The legacy `navigator.webkitTemporaryStorage` shape. `queryUsageAndQuota`
- * invokes `onSuccess(usedBytes, grantedQuotaBytes)`.
- */
-export interface DeprecatedStorageQuota {
-  queryUsageAndQuota(
-    onSuccess: (usedBytes: number, grantedQuotaBytes: number) => void,
-    onError?: (error: unknown) => void,
-  ): void;
 }
 
 export interface WindowLike {
@@ -119,23 +102,12 @@ export interface WindowLike {
   readonly localStorage?: StorageLike | undefined;
   readonly PointerEvent?: unknown;
   readonly MSPointerEvent?: unknown;
-  readonly performance?: PerformanceLike | undefined;
   openDatabase?(
     name: string | null,
     version: string | null,
     displayName: string | null,
     estimatedSize: number | null,
   ): unknown;
-}
-
-/**
- * Subset of `window.performance`. `memory` is a non-standard Chromium-only
- * property; `jsHeapSizeLimit` is the per-renderer JS heap ceiling, which is
- * stable across normal and incognito modes and therefore a reliable
- * device-relative yardstick.
- */
-export interface PerformanceLike {
-  readonly memory?: { readonly jsHeapSizeLimit?: number } | undefined;
 }
 
 export interface StorageLike {

@@ -1,6 +1,6 @@
 {
   "name": "is-incognito-mode",
-  "version": "2.1.0",
+  "version": "2.2.0",
   "description": "Reliably detect whether the user's browser is in private / incognito mode. Zero dependencies, dual ESM + CJS, fully typed.",
   "keywords": [
     "incognito",

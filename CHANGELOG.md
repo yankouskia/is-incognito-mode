@@ -1,5 +1,45 @@
 # Changelog
 
+## 2.2.0
+
+### Minor Changes
+
+- Detect Chrome 147+ incognito via storage-quota **headroom** — empirically verified against Chrome 148.
+
+  **Why v2.0/v2.1 failed.** Chromium 147 made the `predictable-reported-quota`
+  mitigation default. v2.0 thresholded `estimate().quota` directly; v2.1 switched
+  to `webkitTemporaryStorage` vs `performance.memory.jsHeapSizeLimit` (the
+  technique `detectIncognito` uses). Both miss modern Chrome — `detectIncognito`
+  itself now declares Chromium 147+ "broken".
+
+  **What actually works.** Driving headless Chrome 148 (normal vs. real
+  `--incognito`) shows the mitigation did **not** fully equalize the modes:
+  - Normal tab: `navigator.storage.estimate()` → `quota = usage + 10 GiB`
+  - Incognito tab: `quota = usage + 9 GiB`
+
+  The **headroom** (`quota − usage`) is a rock-solid `10 GiB` vs `9 GiB` — stable
+  even after writing data, because subtracting `usage` cancels real consumption.
+  The Chromium strategy now classifies a tab as private when its headroom is
+  below **9.5 GiB** (the midpoint). Verified: Chrome 148 normal → `isPrivate:false`,
+  Chrome 148 incognito → `isPrivate:true`. The same cutoff also catches pre-147
+  Chromium (small dynamic incognito quota).
+
+  **API changes (runtime API unchanged):**
+  - `isIncognito()`, `detectIncognito()`, `DetectionResult`,
+    `IncognitoDetectionError`, and the `DetectionStrategyName` values are all
+    unchanged.
+  - The Chromium strategy no longer reads `navigator.webkitTemporaryStorage` or
+    `performance.memory`; it uses only the standard `navigator.storage.estimate()`.
+  - Removed the v2.1.0-only exported types `DeprecatedStorageQuota` and
+    `PerformanceLike`, and the corresponding optional fields on `NavigatorLike` /
+    `WindowLike` (they were one release old and only relevant to the dropped
+    technique).
+  - `DEFAULT_PRIVATE_QUOTA_BYTES` is now `9.5 GiB` — the headroom cutoff.
+    `privateQuotaThresholdBytes` overrides it.
+
+  The live demo's diagnostics panel now shows `quota`, `usage`, and the computed
+  headroom.
+
 ## 2.1.0
 
 ### Minor Changes

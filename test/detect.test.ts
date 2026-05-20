@@ -3,60 +3,83 @@ import { describe, expect, it } from 'vitest';
 import { detectIncognito, isIncognito } from '../src/detect.ts';
 import { IncognitoDetectionError } from '../src/errors.ts';
 
-import {
-  DESKTOP_HEAP_LIMIT,
-  NORMAL_TEMP_QUOTA,
-  PRIVATE_TEMP_QUOTA,
-  buildGlobals,
-} from './helpers.ts';
+import { NORMAL_HEADROOM, PRIVATE_HEADROOM, buildGlobals } from './helpers.ts';
 
-describe('detectIncognito — Chromium quota strategy', () => {
-  it('classifies an incognito tab (memory-bound quota) as private', async () => {
+const GiB = 1024 * 1024 * 1024;
+const MiB = 1024 * 1024;
+
+describe('detectIncognito — Chromium quota-headroom strategy', () => {
+  it('classifies a Chrome 147+ incognito tab (9 GiB headroom) as private', async () => {
     const result = await detectIncognito({
-      globals: buildGlobals('chromium', { tempQuota: PRIVATE_TEMP_QUOTA }),
+      globals: buildGlobals('chromium', {
+        estimate: { quota: PRIVATE_HEADROOM, usage: 0 },
+      }),
     });
     expect(result).toMatchObject({
       isPrivate: true,
       browser: 'chromium',
       confidence: 'high',
       strategy: 'chromium-quota',
-      quota: PRIVATE_TEMP_QUOTA,
+      quota: PRIVATE_HEADROOM,
     });
   });
 
-  it('classifies a normal tab (disk-bound quota) as not private', async () => {
+  it('classifies a Chrome 147+ normal tab (10 GiB headroom) as not private', async () => {
     const result = await detectIncognito({
-      globals: buildGlobals('chromium', { tempQuota: NORMAL_TEMP_QUOTA }),
+      globals: buildGlobals('chromium', {
+        estimate: { quota: NORMAL_HEADROOM, usage: 0 },
+      }),
     });
     expect(result).toMatchObject({
       isPrivate: false,
       browser: 'chromium',
       confidence: 'high',
       strategy: 'chromium-quota',
-      quota: NORMAL_TEMP_QUOTA,
     });
   });
 
-  it('detects a large incognito quota that exceeds a fixed 1 GiB cutoff', async () => {
-    // Modern Chrome incognito can report well over 1 GiB. The heap-relative
-    // test still catches it because quota stays below 2× the JS heap limit.
-    const bigIncognitoQuota = 3 * 1024 * 1024 * 1024; // 3 GiB
+  it('subtracts usage: incognito headroom holds at 9 GiB under load', async () => {
+    // Chrome reports quota = usage + 9 GiB in incognito, so a tab that has
+    // already written 500 MiB reports quota 9.5 GiB — headroom still 9 GiB.
     const result = await detectIncognito({
       globals: buildGlobals('chromium', {
-        tempQuota: bigIncognitoQuota,
-        heapLimit: DESKTOP_HEAP_LIMIT, // 4 GiB → threshold 8 GiB
+        estimate: { quota: 9 * GiB + 500 * MiB, usage: 500 * MiB },
       }),
     });
     expect(result.isPrivate).toBe(true);
-    expect(result.strategy).toBe('chromium-quota');
   });
 
-  it('falls back to a 1 GiB heap limit when performance.memory is absent', async () => {
-    // Without performance.memory the threshold is 1 GiB × 2 = 2 GiB.
+  it('subtracts usage: normal headroom holds at 10 GiB under load', async () => {
     const result = await detectIncognito({
       globals: buildGlobals('chromium', {
-        tempQuota: 1.5 * 1024 * 1024 * 1024, // 1.5 GiB < 2 GiB
-        heapLimit: 'missing',
+        estimate: { quota: 10 * GiB + 500 * MiB, usage: 500 * MiB },
+      }),
+    });
+    expect(result.isPrivate).toBe(false);
+  });
+
+  it('classifies a legacy small incognito quota (< 147) as private', async () => {
+    const result = await detectIncognito({
+      globals: buildGlobals('chromium', {
+        estimate: { quota: 120 * MiB, usage: 0 },
+      }),
+    });
+    expect(result.isPrivate).toBe(true);
+  });
+
+  it('classifies a legacy disk-bound normal quota (< 147) as not private', async () => {
+    const result = await detectIncognito({
+      globals: buildGlobals('chromium', {
+        estimate: { quota: 200 * GiB, usage: 0 },
+      }),
+    });
+    expect(result.isPrivate).toBe(false);
+  });
+
+  it('treats a missing usage field as zero', async () => {
+    const result = await detectIncognito({
+      globals: buildGlobals('chromium', {
+        estimate: { quota: PRIVATE_HEADROOM },
       }),
     });
     expect(result.isPrivate).toBe(true);
@@ -64,23 +87,35 @@ describe('detectIncognito — Chromium quota strategy', () => {
 
   it('honors an explicit privateQuotaThresholdBytes override', async () => {
     const result = await detectIncognito({
-      globals: buildGlobals('chromium', { tempQuota: 80 * 1024 * 1024 }),
-      privateQuotaThresholdBytes: 50 * 1024 * 1024,
+      globals: buildGlobals('chromium', {
+        estimate: { quota: PRIVATE_HEADROOM, usage: 0 },
+      }),
+      privateQuotaThresholdBytes: 1 * GiB,
     });
     expect(result.isPrivate).toBe(false);
   });
 
-  it('throws PROBE_FAILED when the quota query itself errors', async () => {
+  it('throws PROBE_FAILED when estimate() rejects', async () => {
     await expect(
       detectIncognito({
-        globals: buildGlobals('chromium', { tempQuota: 'error' }),
+        globals: buildGlobals('chromium', { estimateRejects: true }),
       }),
     ).rejects.toMatchObject({ code: 'PROBE_FAILED' });
   });
 
-  it('throws PROBE_FAILED when webkitTemporaryStorage is unavailable', async () => {
+  it('throws PROBE_FAILED when estimate() reports no quota', async () => {
     await expect(
-      detectIncognito({ globals: buildGlobals('chromium') }),
+      detectIncognito({
+        globals: buildGlobals('chromium', { estimate: {} }),
+      }),
+    ).rejects.toMatchObject({ code: 'PROBE_FAILED' });
+  });
+
+  it('throws PROBE_FAILED when navigator.storage is unavailable', async () => {
+    await expect(
+      detectIncognito({
+        globals: buildGlobals('chromium', { storage: 'missing' }),
+      }),
     ).rejects.toMatchObject({ code: 'PROBE_FAILED' });
   });
 });
@@ -281,15 +316,19 @@ describe('detectIncognito — errors', () => {
 describe('isIncognito', () => {
   it('returns just the boolean', async () => {
     const value = await isIncognito({
-      globals: buildGlobals('chromium', { tempQuota: PRIVATE_TEMP_QUOTA }),
+      globals: buildGlobals('chromium', {
+        estimate: { quota: PRIVATE_HEADROOM, usage: 0 },
+      }),
     });
     expect(value).toBe(true);
   });
 
   it('forwards options', async () => {
     const value = await isIncognito({
-      globals: buildGlobals('chromium', { tempQuota: 80 * 1024 * 1024 }),
-      privateQuotaThresholdBytes: 50 * 1024 * 1024,
+      globals: buildGlobals('chromium', {
+        estimate: { quota: PRIVATE_HEADROOM, usage: 0 },
+      }),
+      privateQuotaThresholdBytes: 1 * GiB,
     });
     expect(value).toBe(false);
   });

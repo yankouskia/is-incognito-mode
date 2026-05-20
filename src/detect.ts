@@ -5,7 +5,6 @@ import type {
   DetectIncognitoOptions,
   DetectionGlobals,
   DetectionResult,
-  WindowLike,
 } from './types.ts';
 
 /**
@@ -82,15 +81,9 @@ function resolveGlobals(
   overrides: DetectionGlobals | undefined,
 ): DetectionGlobals {
   if (overrides) return overrides;
-  // Boundary cast on `window`: the live object carries non-standard properties
-  // the detector relies on (notably `performance.memory`) that the standard
-  // DOM lib types do not declare.
   return {
     navigator: typeof navigator === 'undefined' ? undefined : navigator,
-    window:
-      typeof window === 'undefined'
-        ? undefined
-        : (window as unknown as WindowLike),
+    window: typeof window === 'undefined' ? undefined : window,
     indexedDB: typeof indexedDB === 'undefined' ? undefined : indexedDB,
   };
 }

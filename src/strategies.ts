@@ -7,18 +7,19 @@ import type {
 } from './types.ts';
 
 /**
- * Fallback JS-heap ceiling (1 GiB) used by the Chromium strategy when
- * `performance.memory.jsHeapSizeLimit` is unavailable. Also exported as the
- * reference value for the `privateQuotaThresholdBytes` advanced override.
+ * Default cutoff (9.5 GiB) for the Chromium storage-headroom strategy.
+ *
+ * Chrome's `predictable-reported-quota` mitigation (default since Chromium 147)
+ * reports `navigator.storage.estimate()` quota as `usage + 10 GiB` in a normal
+ * tab but `usage + 9 GiB` in an incognito tab. The *headroom* — `quota - usage`
+ * — is therefore a stable 10 GiB vs 9 GiB. 9.5 GiB is the midpoint: below it
+ * means incognito, above it means normal.
+ *
+ * Older Chromium (< 147) reported a small dynamic quota in incognito and a
+ * disk-bound quota (tens-to-hundreds of GiB) in a normal tab, so the same
+ * 9.5 GiB cutoff classifies those correctly too.
  */
-export const DEFAULT_PRIVATE_QUOTA_BYTES = 1024 * 1024 * 1024;
-
-/**
- * The Chromium temporary-storage quota in an incognito tab stays below roughly
- * twice the JS-heap ceiling (it is memory-bound, not disk-bound). Normal tabs
- * are disk-bound and far above it.
- */
-const HEAP_QUOTA_MULTIPLIER = 2;
+export const DEFAULT_PRIVATE_QUOTA_BYTES = 9.5 * 1024 * 1024 * 1024;
 
 /**
  * Sentinel key used by the legacy localStorage / indexedDB probes. Random
@@ -110,66 +111,36 @@ async function attempt(
 /**
  * Chromium family (Chrome, Edge, Brave, Opera, …).
  *
- * Modern Chrome deliberately fakes `navigator.storage.estimate().quota` at
- * `usage + 10 GiB` in *every* mode to defeat detection — so that API is
- * useless here. The legacy `navigator.webkitTemporaryStorage` API was not
- * given the same treatment and still reports the real per-origin quota:
- * disk-bound (huge) in normal mode, memory-bound (small) in incognito.
- *
- * We compare it to `performance.memory.jsHeapSizeLimit` — a per-renderer
- * constant that does not change between modes — so the test adapts to the
- * device instead of relying on a brittle fixed byte count.
+ * Reads `navigator.storage.estimate()` and looks at the **headroom**
+ * (`quota - usage`). Chrome's `predictable-reported-quota` mitigation reports a
+ * 10 GiB headroom for a normal tab and a 9 GiB headroom for an incognito tab —
+ * a stable 1 GiB gap. Subtracting `usage` cancels out the part of the quota
+ * that tracks real consumption, leaving just that offset.
  */
 async function detectViaChromiumQuota(
   browser: BrowserName,
   globals: DetectionGlobals,
   options: Pick<DetectIncognitoOptions, 'privateQuotaThresholdBytes'>,
 ): Promise<DetectionResult | null> {
-  const tempStorage = globals.navigator?.webkitTemporaryStorage;
-  if (typeof tempStorage?.queryUsageAndQuota !== 'function') return null;
+  const storage = globals.navigator?.storage;
+  if (typeof storage?.estimate !== 'function') return null;
 
-  const quota = await new Promise<number | null>((resolve) => {
-    let settled = false;
-    const settle = (value: number | null): void => {
-      if (!settled) {
-        settled = true;
-        resolve(value);
-      }
-    };
-    try {
-      tempStorage.queryUsageAndQuota(
-        (_used, grantedQuota) => {
-          settle(typeof grantedQuota === 'number' ? grantedQuota : null);
-        },
-        () => {
-          settle(null);
-        },
-      );
-    } catch {
-      settle(null);
-    }
-  });
-  if (quota === null) return null;
+  const estimate = await storage.estimate();
+  if (typeof estimate.quota !== 'number') return null;
 
-  const isPrivate =
-    options.privateQuotaThresholdBytes === undefined
-      ? quota < chromiumHeapLimit(globals) * HEAP_QUOTA_MULTIPLIER
-      : quota < options.privateQuotaThresholdBytes;
+  const quota = estimate.quota;
+  const usage = typeof estimate.usage === 'number' ? estimate.usage : 0;
+  const headroom = quota - usage;
+  const threshold =
+    options.privateQuotaThresholdBytes ?? DEFAULT_PRIVATE_QUOTA_BYTES;
 
   return {
-    isPrivate,
+    isPrivate: headroom < threshold,
     browser,
     confidence: 'high',
     quota,
     strategy: 'chromium-quota',
   };
-}
-
-function chromiumHeapLimit(globals: DetectionGlobals): number {
-  const limit = globals.window?.performance?.memory?.jsHeapSizeLimit;
-  return typeof limit === 'number' && limit > 0
-    ? limit
-    : DEFAULT_PRIVATE_QUOTA_BYTES;
 }
 
 /**
