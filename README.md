@@ -4,7 +4,7 @@
 
 ### **Detect private / incognito browsing in 4 lines of code.**
 
-_Zero dependencies — fully typed — dual ESM + CJS — ~1 kB gzipped._
+_Zero dependencies — fully typed — dual ESM + CJS — ~2 kB min+gzip._
 
 [![npm version](https://img.shields.io/npm/v/is-incognito-mode.svg?logo=npm&color=cb3837)](https://www.npmjs.com/package/is-incognito-mode)
 [![npm downloads](https://img.shields.io/npm/dm/is-incognito-mode.svg?color=cb3837)](https://www.npmjs.com/package/is-incognito-mode)
@@ -12,6 +12,7 @@ _Zero dependencies — fully typed — dual ESM + CJS — ~1 kB gzipped._
 [![Coverage](https://img.shields.io/badge/coverage-98%25-brightgreen?logo=vitest)](./coverage)
 [![Bundle size](https://img.shields.io/bundlephobia/minzip/is-incognito-mode?label=min%2Bgzip&color=44cc11)](https://bundlephobia.com/package/is-incognito-mode)
 [![Types](https://img.shields.io/npm/types/is-incognito-mode.svg?logo=typescript&color=3178c6)](./src/index.ts)
+[![Docs](https://img.shields.io/badge/docs-typedoc-9b5de5?logo=readthedocs&logoColor=white)](https://yankouskia.github.io/is-incognito-mode/)
 [![License](https://img.shields.io/npm/l/is-incognito-mode.svg?color=blue)](./LICENSE)
 
 <br />
@@ -317,7 +318,7 @@ Rollup, esbuild, Bun, and Deno.
 | TypeScript          | shipped JS only                                          | strict TypeScript source, full `.d.ts`                          |
 | Module formats      | UMD + CJS                                                | ESM + CJS dual publish                                          |
 | Dependencies        | `get-browser`                                            | **zero**                                                        |
-| Bundle size         | ~3 kB min+gzip                                           | **~1 kB min+gzip**                                              |
+| Bundle size         | ~3 kB min+gzip                                           | **~2 kB min+gzip** (≈1.2 kB brotli)                             |
 | Engines             | Node ≥ 8                                                 | Node ≥ 20                                                       |
 | Error model         | `throw 'string'`                                         | `IncognitoDetectionError` with `code`                           |
 
