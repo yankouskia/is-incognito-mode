@@ -107,7 +107,7 @@
     "typedoc": "^0.28.0",
     "typedoc-material-theme": "^1.4.0",
     "typescript": "^5.7.3",
-    "typescript-eslint": "^8.20.0",
+    "typescript-eslint": "^8.60.0",
     "vitest": "^4.1.7"
   },
   "publishConfig": {
