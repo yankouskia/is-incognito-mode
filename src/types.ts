@@ -72,6 +72,41 @@ export interface DetectIncognitoOptions {
    * Only change this if you have measured your audience.
    */
   readonly privateQuotaThresholdBytes?: number;
+  /**
+   * Maximum time, in milliseconds, to wait for a verdict. If detection has not
+   * settled by the deadline it rejects with an {@link IncognitoDetectionError}
+   * whose `code` is `'TIMEOUT'`, and any in-flight storage probe is abandoned.
+   *
+   * Defaults to `undefined` — **no deadline** (legacy behaviour). Because a
+   * storage probe can, in rare browser states, stall indefinitely (e.g. a
+   * Firefox `indexedDB.open` request that never fires `success`/`error`),
+   * passing a bound such as `5000` is **recommended on any critical render
+   * path** (paywalls, analytics gates) so a stalled probe can never freeze the
+   * calling code.
+   *
+   * @example
+   * ```ts
+   * await detectIncognito({ timeoutMs: 5000 });
+   * ```
+   */
+  readonly timeoutMs?: number;
+  /**
+   * An {@link AbortSignal} that cancels detection. If it is already aborted
+   * when {@link detectIncognito} is called, the call rejects synchronously;
+   * if it aborts while a probe is running, the probe is abandoned. Either way
+   * the rejection is an {@link IncognitoDetectionError} with `code: 'ABORTED'`.
+   *
+   * Pair it with a component lifecycle so a verdict that arrives after the user
+   * has navigated away is discarded.
+   *
+   * @example
+   * ```ts
+   * const controller = new AbortController();
+   * onCleanup(() => controller.abort());
+   * await detectIncognito({ signal: controller.signal });
+   * ```
+   */
+  readonly signal?: AbortSignal;
 }
 
 /**

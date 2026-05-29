@@ -4,6 +4,22 @@ Lightweight ADRs for `is-incognito-mode`. Most recent first.
 
 ---
 
+## ADR-009 — Bounded, cancelable detection (`timeoutMs` + `signal`)
+
+**Context.** `detectIncognito()` is async and races per-engine storage probes. One probe — Firefox's `indexedDB.open` — resolves only on its `success` / `error` events; in rare states (e.g. a `blocked` upgrade) neither ever fires, so the returned promise can hang forever. `storage.estimate()` / `getDirectory()` can likewise stall. On a critical render path (paywall, analytics gate) an unbounded hang is a real production hazard.
+
+**Decision.** Add two optional, opt-in options: `timeoutMs?: number` (reject with code `TIMEOUT` past the deadline) and `signal?: AbortSignal` (reject with code `ABORTED`). Both funnel through one internal `AbortController` whose signal is threaded into the IndexedDB probe so its event listeners are detached when the probe is abandoned. Two new `IncognitoDetectionErrorCode`s — `TIMEOUT` and `ABORTED` — join the union.
+
+**Alternatives considered.**
+
+- A built-in default timeout (e.g. 5 s). Rejected: it would silently change behaviour for every existing caller. `timeoutMs` stays `undefined` by default; the docs recommend a value instead.
+- `AbortSignal.timeout()` / `AbortSignal.any()`. Rejected: neither is available on the stated support floor (Safari 15.2 predates both), so we wire an `AbortController` + `setTimeout` manually for full compatibility.
+- Per-strategy timeouts. Rejected: callers reason about wall-clock, not the internal fallback chain — the deadline wraps the whole detection, once.
+
+**Consequences.** Purely additive and backward compatible — the no-options path is byte-for-byte unchanged (fast-pathed to skip the controller/timer entirely). ~300 bytes min+gzip, still well under the 2 kB budget. Zero new dependencies: both `AbortController` and `setTimeout` are web standards.
+
+---
+
 ## ADR-008 — Bundle with `tsup`
 
 **Context.** v1 used Webpack 4 + Babel 7 to emit a single UMD bundle. We need dual ESM + CJS + `.d.ts` + sourcemaps with as little config as possible.

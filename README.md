@@ -4,7 +4,7 @@
 
 ### **Detect private / incognito browsing in 4 lines of code.**
 
-_Zero dependencies — fully typed — dual ESM + CJS — ~2 kB min+gzip._
+_Zero dependencies — fully typed — dual ESM + CJS — timeout-safe & cancelable — ~2 kB min+gzip._
 
 [![npm version](https://img.shields.io/npm/v/is-incognito-mode.svg?logo=npm&color=cb3837)](https://www.npmjs.com/package/is-incognito-mode)
 [![npm downloads](https://img.shields.io/npm/dm/is-incognito-mode.svg?color=cb3837)](https://www.npmjs.com/package/is-incognito-mode)
@@ -187,6 +187,45 @@ Fields on `DetectionResult`:
 | `quota`      | `number \| null`              | `estimate().quota` in bytes (Chromium); `null` for the OPFS and legacy strategies.        |
 | `strategy`   | `DetectionStrategyName`       | Which probe produced the verdict — see [How it decides](#how-it-decides-under-the-hood).  |
 
+### Timeouts & cancellation
+
+Detection is a `Promise`, and in rare browser states a storage probe can stall —
+for example a Firefox `indexedDB.open` request that never fires `success` or
+`error`. On a critical render path (paywall, analytics gate) that risks freezing
+your code, so you can put a deadline on the call:
+
+```ts
+import { detectIncognito } from 'is-incognito-mode';
+
+// Rejects with an IncognitoDetectionError of code 'TIMEOUT' if no verdict
+// arrives within 5 seconds. Recommended on any hot path.
+const result = await detectIncognito({ timeoutMs: 5000 });
+```
+
+Pass an [`AbortSignal`](https://developer.mozilla.org/docs/Web/API/AbortSignal)
+to cancel detection — e.g. tied to a component lifecycle so a verdict that
+arrives after the user has navigated away is discarded:
+
+```ts
+import { detectIncognito, IncognitoDetectionError } from 'is-incognito-mode';
+
+const controller = new AbortController();
+// React: useEffect(() => () => controller.abort(), []);
+
+try {
+  await detectIncognito({ signal: controller.signal });
+} catch (error) {
+  if (error instanceof IncognitoDetectionError && error.code === 'ABORTED') {
+    // expected — the caller cancelled. Ignore.
+  }
+}
+```
+
+Both options compose; whichever fires first wins (`TIMEOUT` vs `ABORTED`). When a
+bound trips, the in-flight probe is abandoned and its listeners detached.
+`timeoutMs` defaults to `undefined` (no deadline), so existing callers are
+unaffected — but enabling it is the safe default for production.
+
 ### Tuning the detection
 
 You normally do not need to configure anything. The Chromium strategy compares
@@ -247,6 +286,12 @@ try {
       case 'PROBE_FAILED':
         // The engine's probe could not produce a verdict
         break;
+      case 'TIMEOUT':
+        // Detection exceeded the `timeoutMs` deadline
+        break;
+      case 'ABORTED':
+        // Detection was cancelled via the `signal` option
+        break;
     }
   }
 }
@@ -265,17 +310,17 @@ const detect = require('is-incognito-mode').default;
 
 ## API at a glance
 
-| Export                          | Kind     | Description                                                                          |
-| ------------------------------- | -------- | ------------------------------------------------------------------------------------ |
-| `isIncognito(options?)`         | function | Resolves to `boolean`.                                                               |
-| `detectIncognito(options?)`     | function | Resolves to a rich `DetectionResult`.                                                |
-| `IncognitoDetectionError`       | class    | Typed error with `code: 'NOT_A_BROWSER' \| 'UNSUPPORTED_BROWSER' \| 'PROBE_FAILED'`. |
-| `DEFAULT_PRIVATE_QUOTA_BYTES`   | const    | Chromium headroom cutoff (`9.5 GiB`).                                                |
-| `BrowserName` (type)            | type     | Coarse engine name.                                                                  |
-| `DetectionResult` (type)        | type     | Rich result shape — see "Usage".                                                     |
-| `DetectionConfidence` (type)    | type     | `'high' \| 'medium' \| 'low'`.                                                       |
-| `DetectionStrategyName` (type)  | type     | Strategy identifier.                                                                 |
-| `DetectIncognitoOptions` (type) | type     | Options bag.                                                                         |
+| Export                          | Kind     | Description                                                                                                    |
+| ------------------------------- | -------- | -------------------------------------------------------------------------------------------------------------- |
+| `isIncognito(options?)`         | function | Resolves to `boolean`.                                                                                         |
+| `detectIncognito(options?)`     | function | Resolves to a rich `DetectionResult`.                                                                          |
+| `IncognitoDetectionError`       | class    | Typed error with `code: 'NOT_A_BROWSER' \| 'UNSUPPORTED_BROWSER' \| 'PROBE_FAILED' \| 'TIMEOUT' \| 'ABORTED'`. |
+| `DEFAULT_PRIVATE_QUOTA_BYTES`   | const    | Chromium headroom cutoff (`9.5 GiB`).                                                                          |
+| `BrowserName` (type)            | type     | Coarse engine name.                                                                                            |
+| `DetectionResult` (type)        | type     | Rich result shape — see "Usage".                                                                               |
+| `DetectionConfidence` (type)    | type     | `'high' \| 'medium' \| 'low'`.                                                                                 |
+| `DetectionStrategyName` (type)  | type     | Strategy identifier.                                                                                           |
+| `DetectIncognitoOptions` (type) | type     | Options bag.                                                                                                   |
 
 Full generated reference: **<https://yankouskia.github.io/is-incognito-mode/>**
 

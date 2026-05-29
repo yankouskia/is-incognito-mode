@@ -36,6 +36,7 @@ export async function runStrategies(
   browser: BrowserName,
   globals: DetectionGlobals,
   options: Pick<DetectIncognitoOptions, 'privateQuotaThresholdBytes'>,
+  signal?: AbortSignal,
 ): Promise<DetectionResult> {
   const errors: unknown[] = [];
 
@@ -55,7 +56,7 @@ export async function runStrategies(
       );
       if (opfs !== null) return opfs;
       const idb = await attempt(
-        () => detectViaFirefoxIndexedDB(browser, globals),
+        () => detectViaFirefoxIndexedDB(browser, globals, signal),
         errors,
       );
       if (idb !== null) return idb;
@@ -233,49 +234,48 @@ function detectViaSafariStorage(
   };
 }
 
-/** Older Firefox without OPFS: `indexedDB.open` fails in private mode. */
+/**
+ * Older Firefox without OPFS: `indexedDB.open` fails in private mode.
+ *
+ * The verdict arrives asynchronously via the request's `success` / `error`
+ * events — and in rare states (e.g. a `blocked` upgrade) neither ever fires,
+ * which is the one place detection can stall. An optional `signal` lets the
+ * caller abandon the probe: on abort the event listeners are detached so no
+ * dangling references survive, and the promise rejects.
+ */
 async function detectViaFirefoxIndexedDB(
   browser: BrowserName,
   globals: DetectionGlobals,
+  signal?: AbortSignal,
 ): Promise<DetectionResult | null> {
   const indexedDB = globals.indexedDB ?? globals.window?.indexedDB;
-  if (!indexedDB) {
-    return {
-      isPrivate: true,
-      browser,
-      confidence: 'low',
-      quota: null,
-      strategy: 'firefox-indexeddb',
-    };
-  }
+  const privateResult: DetectionResult = {
+    isPrivate: true,
+    browser,
+    confidence: 'low',
+    quota: null,
+    strategy: 'firefox-indexeddb',
+  };
+  if (!indexedDB) return privateResult;
 
-  return new Promise<DetectionResult>((resolve) => {
-    let request: IDBOpenDBRequest;
-    try {
-      request = indexedDB.open(PROBE_KEY);
-    } catch {
-      resolve({
-        isPrivate: true,
-        browser,
-        confidence: 'low',
-        quota: null,
-        strategy: 'firefox-indexeddb',
-      });
+  return new Promise<DetectionResult>((resolve, reject) => {
+    if (signal?.aborted) {
+      reject(new IncognitoDetectionError('ABORTED', 'Detection was aborted.'));
       return;
     }
-
-    request.addEventListener('error', () => {
-      resolve({
-        isPrivate: true,
-        browser,
-        confidence: 'low',
-        quota: null,
-        strategy: 'firefox-indexeddb',
-      });
-    });
-    request.addEventListener('success', () => {
+    let request: IDBOpenDBRequest | undefined;
+    const onAbort = () => {
+      cleanup();
+      reject(new IncognitoDetectionError('ABORTED', 'Detection was aborted.'));
+    };
+    const onError = () => {
+      cleanup();
+      resolve(privateResult);
+    };
+    const onSuccess = () => {
+      cleanup();
       try {
-        request.result.close();
+        request?.result.close();
         indexedDB.deleteDatabase(PROBE_KEY);
       } catch {
         /* best-effort cleanup */
@@ -287,7 +287,22 @@ async function detectViaFirefoxIndexedDB(
         quota: null,
         strategy: 'firefox-indexeddb',
       });
-    });
+    };
+    function cleanup(): void {
+      signal?.removeEventListener('abort', onAbort);
+      request?.removeEventListener('error', onError);
+      request?.removeEventListener('success', onSuccess);
+    }
+
+    try {
+      request = indexedDB.open(PROBE_KEY);
+    } catch {
+      resolve(privateResult);
+      return;
+    }
+    request.addEventListener('error', onError);
+    request.addEventListener('success', onSuccess);
+    signal?.addEventListener('abort', onAbort);
   });
 }
 

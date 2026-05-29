@@ -623,7 +623,8 @@
       async function run() {
         setBusy();
         try {
-          const result = await detectIncognito();
+          // timeoutMs guards the demo against a stalled storage probe.
+          const result = await detectIncognito({ timeoutMs: 5000 });
           render(result);
         } catch (err) {
           renderError(err);

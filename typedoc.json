@@ -35,6 +35,11 @@
   "excludePrivate": true,
   "excludeInternal": true,
   "excludeExternals": true,
+  "externalSymbolLinkMappings": {
+    "typescript": {
+      "AbortSignal": "https://developer.mozilla.org/docs/Web/API/AbortSignal"
+    }
+  },
   "validation": {
     "notExported": true,
     "invalidLink": true,

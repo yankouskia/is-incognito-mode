@@ -39,13 +39,19 @@ interface BuildOptions {
   estimate?: { quota?: number; usage?: number };
   /** Make `navigator.storage.estimate()` reject. */
   estimateRejects?: boolean;
+  /** Make `navigator.storage.estimate()` never settle (stalled probe). */
+  estimateHangs?: boolean;
   /** Drop `navigator.storage` entirely. */
   storage?: 'missing';
-  /** Firefox / Safari OPFS behaviour. Omit to leave `getDirectory` absent. */
-  opfs?: 'normal' | 'private' | 'other-error';
+  /**
+   * Firefox / Safari OPFS behaviour. Omit to leave `getDirectory` absent.
+   * `'hangs'` returns a promise that never settles (stalled probe).
+   */
+  opfs?: 'normal' | 'private' | 'other-error' | 'hangs';
   localStorage?: 'works' | 'throws' | 'missing';
   openDatabase?: 'works' | 'throws' | 'missing';
-  indexedDB?: 'works' | 'throws' | 'missing';
+  /** `'hangs'` opens a request that never fires `success`/`error`. */
+  indexedDB?: 'works' | 'throws' | 'missing' | 'hangs';
   hasPointerEvent?: boolean;
   vendor?: string;
 }
@@ -95,6 +101,9 @@ function makeStorageManager(
   if (opts.estimateRejects) {
     manager.estimate = () => Promise.reject(new Error('estimate failed'));
     used = true;
+  } else if (opts.estimateHangs) {
+    manager.estimate = () => new Promise(() => {});
+    used = true;
   } else if (opts.estimate) {
     const value = opts.estimate;
     manager.estimate = () => Promise.resolve(value);
@@ -104,6 +113,7 @@ function makeStorageManager(
   if (opts.opfs !== undefined) {
     manager.getDirectory = () => {
       if (opts.opfs === 'normal') return Promise.resolve({});
+      if (opts.opfs === 'hangs') return new Promise(() => {});
       if (opts.opfs === 'other-error') {
         return Promise.reject(new Error('AbortError: unrelated failure'));
       }
@@ -140,7 +150,7 @@ function makeOpenDatabase(mode: 'works' | 'throws') {
 }
 
 function makeIndexedDB(
-  mode: 'works' | 'throws' | 'missing',
+  mode: 'works' | 'throws' | 'missing' | 'hangs',
 ): IDBFactory | undefined {
   if (mode === 'missing') return undefined;
   return {
@@ -161,10 +171,14 @@ function makeIndexedDB(
         dispatchEvent: () => true,
       } as unknown as IDBOpenDBRequest;
 
-      queueMicrotask(() => {
-        const target = mode === 'throws' ? 'error' : 'success';
-        for (const cb of listeners[target] ?? []) cb();
-      });
+      // 'hangs' models a request that never fires success/error — the one
+      // state in which detection can stall without a timeout/signal.
+      if (mode !== 'hangs') {
+        queueMicrotask(() => {
+          const target = mode === 'throws' ? 'error' : 'success';
+          for (const cb of listeners[target] ?? []) cb();
+        });
+      }
 
       return request;
     },

@@ -48,9 +48,25 @@ describe('public API types', () => {
     >().toEqualTypeOf<number | undefined>();
   });
 
+  it('DetectIncognitoOptions exposes timeoutMs and signal', () => {
+    expectTypeOf<DetectIncognitoOptions['timeoutMs']>().toEqualTypeOf<
+      number | undefined
+    >();
+    expectTypeOf<DetectIncognitoOptions['signal']>().toEqualTypeOf<
+      AbortSignal | undefined
+    >();
+  });
+
   it('IncognitoDetectionError code is the literal union', () => {
     type FromErr = InstanceType<typeof IncognitoDetectionError>['code'];
     expectTypeOf<FromErr>().toEqualTypeOf<IncognitoDetectionErrorCode>();
+    expectTypeOf<IncognitoDetectionErrorCode>().toEqualTypeOf<
+      | 'NOT_A_BROWSER'
+      | 'UNSUPPORTED_BROWSER'
+      | 'PROBE_FAILED'
+      | 'TIMEOUT'
+      | 'ABORTED'
+    >();
   });
 
   it('DEFAULT_PRIVATE_QUOTA_BYTES is a number constant', () => {

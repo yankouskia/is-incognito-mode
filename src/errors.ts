@@ -9,7 +9,11 @@ export type IncognitoDetectionErrorCode =
   /** Browser detected but no supported detection strategy applies. */
   | 'UNSUPPORTED_BROWSER'
   /** A probe threw before it could produce a definitive result. */
-  | 'PROBE_FAILED';
+  | 'PROBE_FAILED'
+  /** Detection did not finish within the `timeoutMs` deadline. */
+  | 'TIMEOUT'
+  /** Detection was cancelled via the caller-supplied `signal`. */
+  | 'ABORTED';
 
 /**
  * Thrown when private-mode cannot be determined.
