@@ -5,6 +5,7 @@ import type {
   DetectIncognitoOptions,
   DetectionGlobals,
   DetectionResult,
+  NavigatorLike,
 } from './types.ts';
 
 /**
@@ -40,6 +41,12 @@ import type {
  * const controller = new AbortController();
  * await detectIncognito({ signal: controller.signal });
  * ```
+ *
+ * @example Memoize the verdict for the page's lifetime:
+ * ```ts
+ * await detectIncognito({ cache: true }); // probes once
+ * await detectIncognito({ cache: true }); // instant, cached
+ * ```
  */
 export async function detectIncognito(
   options: DetectIncognitoOptions = {},
@@ -69,24 +76,49 @@ export async function detectIncognito(
       : { vendor: globals.navigator.vendor }),
   });
 
+  const cache = options.cache === true;
+  if (cache) {
+    const hit = resultCache.get(globals.navigator);
+    if (hit) return hit;
+  }
+
   const strategyOptions =
     options.privateQuotaThresholdBytes === undefined
       ? {}
       : { privateQuotaThresholdBytes: options.privateQuotaThresholdBytes };
 
-  // Fast path: with neither a deadline nor a signal, behave exactly as before —
-  // no AbortController, no timer, no extra microtask.
-  if (timeoutMs === undefined && !signal) {
+  const bounded = timeoutMs !== undefined || signal !== undefined;
+
+  // Fast path: with neither a deadline, a signal, nor caching, behave exactly
+  // as before — a direct return, no AbortController, no timer, no extra await.
+  if (!bounded && !cache) {
     return runStrategies(browser, globals, strategyOptions);
   }
 
-  return runBounded(
-    (innerSignal) =>
-      runStrategies(browser, globals, strategyOptions, innerSignal),
-    signal,
-    timeoutMs,
-  );
+  const result = await (bounded
+    ? runBounded(
+        (innerSignal) =>
+          runStrategies(browser, globals, strategyOptions, innerSignal),
+        signal,
+        timeoutMs,
+      )
+    : runStrategies(browser, globals, strategyOptions));
+
+  // Only a *successful* verdict is cached — a TIMEOUT / ABORTED / PROBE_FAILED
+  // rejection rejects the await above and never reaches here, so it can't
+  // poison later calls.
+  if (cache) resultCache.set(globals.navigator, result);
+  return result;
 }
+
+/**
+ * Verdicts cached by {@link DetectIncognitoOptions.cache}, keyed by the
+ * `navigator` object the detection ran against. In production that key is the
+ * page's single live `navigator`, so the entry lives exactly as long as the
+ * page; tests injecting fresh `globals` get a fresh key — and therefore free
+ * isolation — per injection.
+ */
+const resultCache = new WeakMap<NavigatorLike, DetectionResult>();
 
 /**
  * Race `work` against a deadline and/or an external abort signal. The two are

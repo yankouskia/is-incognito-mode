@@ -226,6 +226,31 @@ bound trips, the in-flight probe is abandoned and its listeners detached.
 `timeoutMs` defaults to `undefined` (no deadline), so existing callers are
 unaffected — but enabling it is the safe default for production.
 
+### Caching the verdict
+
+Private / incognito state can't change within a page load, so re-running the
+storage probes on every call is wasted work. Pass `cache: true` to memoize the
+**first successful** verdict and return it instantly thereafter:
+
+```ts
+import { detectIncognito } from 'is-incognito-mode';
+
+await detectIncognito({ cache: true }); // probes once
+await detectIncognito({ cache: true }); // instant — same cached result
+```
+
+- **Scope.** The cache is keyed by the live `navigator` object, so it lives
+  exactly as long as the page (per-document, per-origin). Nothing is stored
+  globally — injecting a fresh `globals` (as tests and per-request SSR do)
+  gives a fresh, isolated cache with no teardown to remember.
+- **Failures aren't cached.** A `TIMEOUT`, `ABORTED`, or `PROBE_FAILED`
+  rejection is never stored, so the next call retries cleanly.
+- **It caches the verdict, not the inputs.** A cache hit ignores a later call's
+  differing [`privateQuotaThresholdBytes`](#tuning-the-detection). If you vary
+  the threshold per call, leave `cache` off.
+
+Off by default — existing behaviour is unchanged.
+
 ### Tuning the detection
 
 You normally do not need to configure anything. The Chromium strategy compares

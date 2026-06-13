@@ -107,6 +107,33 @@ export interface DetectIncognitoOptions {
    * ```
    */
   readonly signal?: AbortSignal;
+  /**
+   * Memoize the verdict. Private / incognito state cannot change within a page
+   * load, so when `true` the **first successful** {@link DetectionResult} is
+   * cached and returned by every later `cache: true` call — skipping the
+   * storage probes entirely. Off by default.
+   *
+   * The cache is keyed by the live `navigator` object, so it lives exactly as
+   * long as the page (and is naturally per-document and per-origin). Nothing is
+   * stored globally; injecting a fresh `globals` (as tests and per-request SSR
+   * do) yields a fresh, isolated cache with no manual teardown.
+   *
+   * Only **successful** verdicts are cached — a `TIMEOUT`, `ABORTED`, or
+   * `PROBE_FAILED` rejection is never stored, so a later call retries cleanly.
+   *
+   * **Footgun:** the cache stores the *verdict*, not the inputs. A cached call
+   * ignores a later call's differing {@link privateQuotaThresholdBytes} (and
+   * `timeoutMs`) and returns the original verdict. If you vary the threshold
+   * per call, leave `cache` off.
+   *
+   * @example
+   * ```ts
+   * // First call probes; subsequent calls are instant for the page's lifetime.
+   * await detectIncognito({ cache: true });
+   * await detectIncognito({ cache: true }); // cached
+   * ```
+   */
+  readonly cache?: boolean;
 }
 
 /**

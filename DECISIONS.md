@@ -4,6 +4,26 @@ Lightweight ADRs for `is-incognito-mode`. Most recent first.
 
 ---
 
+## ADR-010 — Opt-in verdict caching (`cache`)
+
+**Context.** Private / incognito state is fixed for a page load, yet apps often call detection from several places (a paywall gate, an analytics guard, a component mount). Each call re-runs the storage probes — redundant work, and on Chromium an extra `navigator.storage.estimate()` round-trip every time.
+
+**Decision.** Add an opt-in `cache?: boolean` option. When `true`, the **first successful** `DetectionResult` is memoized in a module-level `WeakMap` keyed by the live `navigator` object and returned by every later `cache: true` call.
+
+- **Key = `navigator`.** In a browser that is the page's single `navigator`, so the entry lives exactly as long as the page and is GC'd on unload. Tests and per-request SSR inject fresh `globals`, which yields a fresh key and therefore automatic isolation — no global state, no teardown.
+- **Result only, never rejections.** `TIMEOUT` / `ABORTED` / `PROBE_FAILED` are not cached, so a transient failure can't poison later calls.
+- **No `clearDetectionCache()`.** A `WeakMap` plus globals-injection already gives correct lifetime and test isolation; an exported clear function would only invite coupling and grow the API surface for no real gain.
+
+**Alternatives considered.**
+
+- Cache the in-flight **promise** (dedupe concurrent calls). Rejected: marginal benefit (detection runs once or twice per page) for real complexity — a rejected shared promise must be evicted carefully to avoid poisoning. Caching the resolved result keeps the contract trivially correct.
+- A global singleton cache (not keyed by `navigator`). Rejected: it would leak across injected-`globals` tests and per-request SSR, and couldn't be GC'd.
+- Caching on by default. Rejected: it changes behaviour for existing callers and would surprise anyone who varies `privateQuotaThresholdBytes` per call.
+
+**Consequences.** Purely additive and opt-in (off by default — the no-options path is unchanged). ~40 bytes min+gzip. One documented footgun: because the cache stores the verdict and not the inputs, a hit ignores a later call's differing `privateQuotaThresholdBytes`; the JSDoc and README say to leave `cache` off when tuning the threshold per call.
+
+---
+
 ## ADR-009 — Bounded, cancelable detection (`timeoutMs` + `signal`)
 
 **Context.** `detectIncognito()` is async and races per-engine storage probes. One probe — Firefox's `indexedDB.open` — resolves only on its `success` / `error` events; in rare states (e.g. a `blocked` upgrade) neither ever fires, so the returned promise can hang forever. `storage.estimate()` / `getDirectory()` can likewise stall. On a critical render path (paywall, analytics gate) an unbounded hang is a real production hazard.
