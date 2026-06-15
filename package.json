@@ -97,7 +97,7 @@
     "expect-type": "^1.1.0",
     "happy-dom": "^20.10.2",
     "lint-staged": "^15.3.0",
-    "prettier": "^3.4.2",
+    "prettier": "^3.8.4",
     "publint": "^0.3.2",
     "rimraf": "^6.0.1",
     "simple-git-hooks": "^2.11.1",
