@@ -18,7 +18,7 @@ jobs:
     runs-on: ubuntu-latest
     if: github.repository == 'yankouskia/is-incognito-mode'
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
