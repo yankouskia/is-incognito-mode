@@ -84,7 +84,7 @@
   },
   "devDependencies": {
     "@arethetypeswrong/cli": "^0.18.2",
-    "@changesets/cli": "^2.27.11",
+    "@changesets/cli": "^2.31.1",
     "@eslint/js": "^9.18.0",
     "@size-limit/preset-small-lib": "^11.1.6",
     "@types/node": "^22.19.20",
